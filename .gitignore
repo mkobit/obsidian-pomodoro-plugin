@@ -36,3 +36,8 @@ e2e/test-vault/
 
 # Stray build output capture
 build_output.log
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

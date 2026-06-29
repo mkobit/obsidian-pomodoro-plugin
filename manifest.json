@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-pomodoro-plugin",
+  "name": "Bases Pomodoro",
+  "version": "0.0.1",
+  "minAppVersion": "1.10.0",
+  "description": "Customizable Pomodoro timer with Obsidian Bases support.",
+  "author": "mkobit",
+  "authorUrl": "https://github.com/mkobit",
+  "isDesktopOnly": true
+}

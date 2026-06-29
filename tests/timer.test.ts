@@ -1,20 +1,20 @@
-import { mock, test, expect } from 'bun:test';
+import { mock, test, expect } from 'bun:test'
 
-mock.module('obsidian', () => {
+void mock.module('obsidian', () => {
   return {
     PluginSettingTab: class {},
     Setting: class {},
     App: class {},
     Plugin: class {},
     TFile: class {},
-  };
-});
+  }
+})
 
-import type { TimerState, TimerAction } from '../src/timer/reducer';
+import type { TimerState, TimerAction } from '../src/timer/reducer'
 
 test('reducer start transitions status to running', async () => {
-  const { timerReducer } = await import('../src/timer/reducer');
-  const { DEFAULT_SETTINGS } = await import('../src/settings');
+  const { timerReducer } = await import('../src/timer/reducer')
+  const { DEFAULT_SETTINGS } = await import('../src/settings')
 
   const initial: TimerState = {
     status: 'stopped',
@@ -22,17 +22,17 @@ test('reducer start transitions status to running', async () => {
     currentPhaseIndex: 0,
     remainingSeconds: 1500,
     activeFilePath: null,
-  };
-  const action: TimerAction = { type: 'start', filePath: 'task.md' };
-  const next = timerReducer(initial, action, DEFAULT_SETTINGS);
-  
-  expect(next.status).toBe('running');
-  expect(next.activeFilePath).toBe('task.md');
-});
+  }
+  const action: TimerAction = { type: 'start', filePath: 'task.md' }
+  const next = timerReducer(initial, action, DEFAULT_SETTINGS)
+
+  expect(next.status).toBe('running')
+  expect(next.activeFilePath).toBe('task.md')
+})
 
 test('reducer tick decrements remaining seconds', async () => {
-  const { timerReducer } = await import('../src/timer/reducer');
-  const { DEFAULT_SETTINGS } = await import('../src/settings');
+  const { timerReducer } = await import('../src/timer/reducer')
+  const { DEFAULT_SETTINGS } = await import('../src/settings')
 
   const initial: TimerState = {
     status: 'running',
@@ -40,9 +40,9 @@ test('reducer tick decrements remaining seconds', async () => {
     currentPhaseIndex: 0,
     remainingSeconds: 10,
     activeFilePath: 'task.md',
-  };
-  const action: TimerAction = { type: 'tick' };
-  const next = timerReducer(initial, action, DEFAULT_SETTINGS);
+  }
+  const action: TimerAction = { type: 'tick' }
+  const next = timerReducer(initial, action, DEFAULT_SETTINGS)
 
-  expect(next.remainingSeconds).toBe(9);
-});
+  expect(next.remainingSeconds).toBe(9)
+})

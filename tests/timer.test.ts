@@ -1,8 +1,21 @@
-import { expect, test } from 'bun:test';
-import { timerReducer, type TimerState, type TimerAction } from '../src/timer/reducer';
-import { DEFAULT_SETTINGS } from '../src/settings';
+import { mock, test, expect } from 'bun:test';
 
-test('reducer start transitions status to running', () => {
+mock.module('obsidian', () => {
+  return {
+    PluginSettingTab: class {},
+    Setting: class {},
+    App: class {},
+    Plugin: class {},
+    TFile: class {},
+  };
+});
+
+import type { TimerState, TimerAction } from '../src/timer/reducer';
+
+test('reducer start transitions status to running', async () => {
+  const { timerReducer } = await import('../src/timer/reducer');
+  const { DEFAULT_SETTINGS } = await import('../src/settings');
+
   const initial: TimerState = {
     status: 'stopped',
     workflowId: 'default',
@@ -17,7 +30,10 @@ test('reducer start transitions status to running', () => {
   expect(next.activeFilePath).toBe('task.md');
 });
 
-test('reducer tick decrements remaining seconds', () => {
+test('reducer tick decrements remaining seconds', async () => {
+  const { timerReducer } = await import('../src/timer/reducer');
+  const { DEFAULT_SETTINGS } = await import('../src/settings');
+
   const initial: TimerState = {
     status: 'running',
     workflowId: 'default',

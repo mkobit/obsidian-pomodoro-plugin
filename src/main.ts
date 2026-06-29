@@ -1,5 +1,5 @@
 import { Plugin, TFile } from 'obsidian';
-import { DEFAULT_SETTINGS, type PomodoroSettings } from './settings';
+import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings';
 import { TimerStore } from './timer/store';
 import { TimerTicker } from './timer/ticker';
 import { PomodoroTimerView } from './views/timer-view';
@@ -43,6 +43,8 @@ export default class PomodoroPlugin extends Plugin {
         options: () => PomodoroTimerView.getViewOptions(),
       },
     );
+
+    this.addSettingTab(new PomodoroSettingTab(this.app, this));
   }
 
   private async handlePhaseComplete(filePath: string) {

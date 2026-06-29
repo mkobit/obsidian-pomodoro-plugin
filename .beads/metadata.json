@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "POMO",
+  "project_id": "e2992e15-60fc-4d18-8bab-822d6940071e"
+}

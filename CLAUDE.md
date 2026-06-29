@@ -1,24 +1,6 @@
-# Obsidian Pomodoro Plugin
+# Project Instructions for AI Agents
 
-This repository contains a customizable Pomodoro timer plugin integrated with Obsidian Bases.
-It is built with strict TypeScript enforcement.
-
-## Code style and rules
-
-The project enforces strict Functional Programming principles via `eslint`.
-- **No mutations**: Use pure reducer functions for state transformations.
-- **Dependency separation**: State reducer, state store, and execution tickers live in isolated modules.
-- **Dependency Injection**: Inject dispatch handlers and settings instead of binding to global managers.
-- **Date/Time**: Use the `Temporal` API for logic instead of the native `Date`.
-
-## Commands
-
-| Command | Description |
-| :--- | :--- |
-| `bun run build` | Compiles the plugin using esbuild. |
-| `bun test` | Executes unit tests via bun test. |
-| `bun run test:e2e` | Runs E2E tests using Playwright. |
-| `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault. |
+This file provides instructions and context for AI coding agents working on this project.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
@@ -67,3 +49,22 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+
+## Build & Test
+
+_Add your build and test commands here_
+
+```bash
+# Example:
+# npm install
+# npm test
+```
+
+## Architecture Overview
+
+_Add a brief overview of your project architecture_
+
+## Conventions & Patterns
+
+_Add your project-specific conventions here_

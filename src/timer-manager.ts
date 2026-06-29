@@ -18,6 +18,11 @@ export class TimerManager {
   private settings: PomodoroSettings;
   private intervalId: any = null;
   private listeners: ((state: TimerState) => void)[] = [];
+  private onPhaseCompleteCallback?: (filePath: string) => Promise<void>;
+
+  public onPhaseComplete(callback: (filePath: string) => Promise<void>) {
+    this.onPhaseCompleteCallback = callback;
+  }
 
   constructor(settings: PomodoroSettings) {
     this.settings = settings;
@@ -98,11 +103,16 @@ export class TimerManager {
     }
   }
 
-  private completePhase() {
+  private async completePhase() {
     this.stopTicker();
+    const completedFilePath = this.state.activeFilePath;
+    
     if (this.state.currentPhaseIndex === 0) {
       this.state.currentPhaseIndex = 1;
       this.state.remainingSeconds = this.settings.defaultBreakDurationSeconds;
+      if (completedFilePath && this.onPhaseCompleteCallback) {
+        await this.onPhaseCompleteCallback(completedFilePath);
+      }
     } else {
       this.state.currentPhaseIndex = 0;
       this.state.remainingSeconds = this.settings.defaultWorkDurationSeconds;

@@ -1,6 +1,6 @@
 import { BasesView, type ViewOption, type QueryController } from 'obsidian';
 import type PomodoroPlugin from '../main';
-import type { TimerState } from '../timer-manager';
+import type { TimerState } from '../timer/reducer';
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer';
@@ -15,10 +15,10 @@ export class PomodoroTimerView extends BasesView {
   }
 
   onload() {
-    this.unsubscribe = this.plugin.timer.subscribe((state) => {
+    this.unsubscribe = this.plugin.store.subscribe((state) => {
       this.render(state);
     });
-    this.render(this.plugin.timer.getState());
+    this.render(this.plugin.store.getState());
   }
 
   onunload() {
@@ -28,7 +28,7 @@ export class PomodoroTimerView extends BasesView {
   }
 
   onDataUpdated() {
-    this.render(this.plugin.timer.getState());
+    this.render(this.plugin.store.getState());
   }
 
   private render(state: TimerState) {
@@ -45,14 +45,14 @@ export class PomodoroTimerView extends BasesView {
     
     if (state.status !== 'running') {
       const playBtn = controls.createEl('button', { text: 'Start' });
-      playBtn.addEventListener('click', () => this.plugin.timer.start());
+      playBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'start' }));
     } else {
       const pauseBtn = controls.createEl('button', { text: 'Pause' });
-      pauseBtn.addEventListener('click', () => this.plugin.timer.pause());
+      pauseBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'pause' }));
     }
 
     const stopBtn = controls.createEl('button', { text: 'Reset' });
-    stopBtn.addEventListener('click', () => this.plugin.timer.stop());
+    stopBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'stop' }));
 
     // Work Queue
     const queueEl = this.containerEl.createDiv({ cls: 'pomodoro-queue' });
@@ -72,7 +72,7 @@ export class PomodoroTimerView extends BasesView {
         li.addClass('is-active-task');
       }
       taskBtn.addEventListener('click', () => {
-        this.plugin.timer.start(entry.file.path);
+        this.plugin.store.dispatch({ type: 'start', filePath: entry.file.path });
       });
     }
   }

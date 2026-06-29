@@ -93,7 +93,7 @@ export default tseslint.config(
     ignores: [
       // Plugin install artifacts inside the test vault — populated at runtime by `bun run vault:install`
       // eslint-disable-next-line obsidianmd/hardcoded-config-path
-      'obsidian-bases-charts-example-vault/.obsidian/plugins/**',
+      'obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/**',
     ],
   },
   {
@@ -252,10 +252,11 @@ export default tseslint.config(
   },
   // Overrides for Obsidian Plugin Code (Views, Main, Settings)
   {
-    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts'],
+    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts', 'src/timer/**/*.ts'],
     rules: {
       // RELAX Functional Rules for Obsidian API
       // The Obsidian API necessitates classes, inheritance, side effects, and mutations (of 'this').
+      'functional/no-let': 'off',
       'functional/no-expression-statements': 'off',
       '@typescript-eslint/consistent-type-assertions': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
@@ -325,64 +326,7 @@ export default tseslint.config(
       '@typescript-eslint/no-implied-eval': 'off', // evaluateObsidian uses new Function() to serialize/deserialize test fns
     },
   },
-  // Legacy Transformers (Pending Refactor)
-  {
-    files: ['src/charts/transformers/**/*.ts', 'src/@types/**/*.ts', 'src/charts/transformer.ts'],
-    rules: {
-      'functional/no-return-void': 'off',
-      'functional/prefer-immutable-types': 'off',
-      'functional/type-declaration-immutability': 'off',
-      'functional/readonly-type': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      'functional/no-try-statements': 'off',
-      'functional/no-conditional-statements': 'off',
-    },
-  },
-  // Refactored Transformers (Strict)
-  {
-    files: [
-      'src/charts/transformer.ts',
-      'src/charts/transformers/base.ts',
-      'src/charts/transformers/cartesian.ts',
-      'src/charts/transformers/gantt.ts',
-      'src/charts/transformers/pie.ts',
-      'src/charts/transformers/scatter.ts',
-      'src/charts/transformers/utils.ts',
-    ],
-    rules: {
-      'functional/prefer-immutable-types': ['error', {
-        enforcement: 'ReadonlyShallow',
-        ignoreClasses: true,
-        ignoreTypePattern: ['^.*Option$'],
-      }],
-      'functional/type-declaration-immutability': ['error', {
-        rules: [
-          {
-            identifiers: '^I?Mutable.+',
-            immutability: 'Mutable',
-            comparator: 'AtLeast',
-          },
-          {
-            identifiers: '^(?!I?Mutable).+',
-            immutability: 'ReadonlyShallow',
-            comparator: 'AtLeast',
-          },
-        ],
-        ignoreInterfaces: false,
-      }],
-    },
-  },
-  // Temporary override for gantt.ts pending refactor
-  {
-    files: ['src/charts/transformers/gantt.ts'],
-    rules: {
-      'functional/prefer-immutable-types': 'off',
-      'functional/type-declaration-immutability': 'off',
-      'functional/readonly-type': 'off',
-    },
-  },
+
   // Scripts
   {
     files: ['scripts/**/*.ts', 'scripts/**/*.cjs', 'esbuild.config.mjs', 'version-bump.mjs'],

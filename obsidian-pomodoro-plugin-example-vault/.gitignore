@@ -1,0 +1,6 @@
+# Obsidian runtime state — not part of the canonical test vault
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.obsidian/plugins/
+.trash/

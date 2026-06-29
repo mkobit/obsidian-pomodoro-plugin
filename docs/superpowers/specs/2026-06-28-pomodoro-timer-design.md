@@ -79,3 +79,10 @@ It runs unit tests via Bun test.
 It runs end-to-end tests using Playwright.
 The build is compiled using Esbuild.
 It uses Release-Please to manage version releases.
+
+## GitHub repository policies
+
+The repository must follow these rules:
+1. Require branch merges via Pull Requests only.
+2. Only squash merges are allowed.
+3. Prevent force pushing to the main branch.

@@ -1,6 +1,6 @@
 export class TimerTicker {
   private dispatch: (action: { type: 'tick' }) => void
-  private intervalId: Timer | null = null
+  private intervalId: number | null = null
 
   constructor(dispatch: (action: { type: 'tick' }) => void) {
     this.dispatch = dispatch

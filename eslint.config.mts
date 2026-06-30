@@ -94,6 +94,8 @@ export default tseslint.config(
       // Plugin install artifacts inside the test vault — populated at runtime by `bun run vault:install`
       // eslint-disable-next-line obsidianmd/hardcoded-config-path
       'obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/**',
+      // Beads issue tracker — generated config and data files
+      '.beads/**',
     ],
   },
   {

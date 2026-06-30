@@ -2,6 +2,7 @@ import { Plugin, TFile } from 'obsidian'
 import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
 import { TimerStore } from './timer/store'
 import { TimerTicker } from './timer/ticker'
+import { POMODORO_WORKFLOW } from './timer/workflow'
 import { PomodoroTimerView } from './views/timer-view'
 
 export default class PomodoroPlugin extends Plugin {
@@ -11,7 +12,7 @@ export default class PomodoroPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings()
-    this.store = new TimerStore(this.settings)
+    this.store = new TimerStore(POMODORO_WORKFLOW)
     this.ticker = new TimerTicker(action => this.store.dispatch(action))
 
     // Handle background ticker transitions
@@ -24,8 +25,12 @@ export default class PomodoroPlugin extends Plugin {
         this.ticker.stop()
       }
 
-      // Check phase completion write-back transition
-      if (lastState.currentPhaseIndex === 0 && state.currentPhaseIndex === 1 && state.activeFilePath) {
+      // Write back when the focus phase (index 0) completes and advances
+      if (
+        lastState.currentPhaseIndex !== state.currentPhaseIndex
+        && lastState.currentPhaseIndex === 0
+        && state.activeFilePath
+      ) {
         void this.handlePhaseComplete(state.activeFilePath)
       }
       lastState = state
@@ -75,15 +80,9 @@ export default class PomodoroPlugin extends Plugin {
       DEFAULT_SETTINGS,
       await this.loadData() as Partial<PomodoroSettings>,
     )
-    if (this.store) {
-      this.store.updateSettings(this.settings)
-    }
   }
 
   async saveSettings() {
     await this.saveData(this.settings)
-    if (this.store) {
-      this.store.updateSettings(this.settings)
-    }
   }
 }

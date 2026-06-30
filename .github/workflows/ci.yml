@@ -46,7 +46,7 @@ jobs:
 
             - name: Upload Build Artifacts
               if: (success() || failure()) && steps.setup.outcome == 'success'
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@v4
               with:
                   name: ${{ steps.set-artifact-name.outputs.artifact-name }}
                   path: |
@@ -56,7 +56,7 @@ jobs:
 
             - name: Upload Coverage
               if: (success() || failure()) && steps.setup.outcome == 'success'
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@v4
               with:
                   name: coverage
                   path: coverage/
@@ -75,7 +75,7 @@ jobs:
                   bun-version: ${{ env.BUN_VERSION }}
 
             - name: Download Build Artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@v4
               with:
                   name: ${{ needs.build.outputs.artifact-name }}
 
@@ -86,6 +86,9 @@ jobs:
                   key: obsidian-cache-${{ runner.os }}-${{ hashFiles('bun.lock', 'playwright.config.ts') }}
                   restore-keys: |
                       obsidian-cache-${{ runner.os }}-
+
+            - name: Install plugin into vault
+              run: bun run vault:install
 
             - name: Run E2E Tests
               run: xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" bun run test:e2e

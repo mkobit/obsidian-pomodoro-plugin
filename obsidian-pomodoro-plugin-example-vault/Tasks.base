@@ -1,0 +1,8 @@
+type: base
+fields:
+  - name: status
+    type: text
+  - name: due
+    type: date
+  - name: priority
+    type: number

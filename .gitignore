@@ -30,6 +30,8 @@ playwright-report/
 test-results/
 .obsidian-bin/
 e2e/test-vault/
+# Plugin install artifacts inside the example vault — populated at runtime by vault:install
+obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/
 
 # Claude Code local-only settings
 .claude/settings.local.json

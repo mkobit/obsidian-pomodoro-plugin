@@ -1,17 +1,33 @@
+import { z } from 'zod'
+import type { Temporal } from 'temporal-polyfill'
 import type { PhaseId } from '../phase/phase'
-import type { Session } from './session'
+import type { PhaseGraphId } from '../phase/phase-graph'
+
+/** Whether the engine's ticker is running, paused, or stopped. */
+export const EngineStatusSchema = z.enum(['running', 'paused', 'stopped'])
+export type EngineStatus = z.infer<typeof EngineStatusSchema>
 
 /**
- * Runtime engine state for a live session. `phaseVisitCounts` backs
- * TransitionCondition's 'everyNth' case (e.g. a long break every 4th cycle)
- * — it's derived at runtime by replaying/counting phase entries, not part of
- * the static PhaseGraph config.
+ * Runtime engine state for a live traversal of a PhaseGraph — the
+ * PhaseGraph-based replacement for src/timer/reducer.ts's TimerState.
  *
- * Deliberately minimal for this pass — a fuller EngineState (replacing
- * src/timer/reducer.ts's TimerState) is follow-up work once the reducer
- * migrates to PhaseGraph.
+ * `phaseVisitCounts` backs TransitionCondition's 'everyNth' case (e.g. a long
+ * break every 4th cycle) — it's derived at runtime by counting phase exits,
+ * not part of the static PhaseGraph config.
+ *
+ * Deliberately does NOT embed a `Session`/`PhaseInstance` history yet — that
+ * bookkeeping (itemsTouched, mutationsApplied, endReason) only means
+ * something once Hook/CompletionPolicy execution and a FileMutation-apply
+ * mechanism exist, which are follow-up work, not this pass.
  */
 export interface EngineState {
-  readonly session: Session
+  readonly status: EngineStatus
+  /** ID of the active PhaseGraph (for serialization/rehydration). */
+  readonly phaseGraphId: PhaseGraphId
+  readonly currentPhaseId: PhaseId
+  /** Time remaining in the current phase, or null for a duration-less (manual/until-dismissed) phase. */
+  readonly remaining: Temporal.Duration | null
+  /** The file path of the active task, if any. */
+  readonly activeFilePath: string | null
   readonly phaseVisitCounts: Readonly<Record<PhaseId, number>>
 }

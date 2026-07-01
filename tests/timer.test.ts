@@ -11,102 +11,156 @@ void mock.module('obsidian', () => {
 })
 
 import { Temporal } from 'temporal-polyfill'
-import { timerReducer, initialState } from '../src/timer/reducer'
-import type { TimerState, TimerAction } from '../src/timer/reducer'
-import { WorkflowSchema } from '../src/timer/workflow'
-import type { Workflow } from '../src/timer/workflow'
+import { engineReducer, initialEngineState } from '../src/timer/reducer'
+import type { EngineAction } from '../src/timer/reducer'
+import type { EngineState } from '../src/domain/session/engine-state'
+import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
+import type { PhaseGraph } from '../src/domain/phase/phase-graph'
+import { PhaseSchema, PhaseIdSchema } from '../src/domain/phase/phase'
+import type { PhaseId } from '../src/domain/phase/phase'
 
-const testWorkflow: Workflow = WorkflowSchema.parse({
+const focusId = PhaseIdSchema.parse('focus')
+const breakId = PhaseIdSchema.parse('break')
+const longBreakId = PhaseIdSchema.parse('long-break')
+const testGraphId = PhaseGraphIdSchema.parse('test')
+
+const phaseDefaults = {
+  taskSourceId: null,
+  completionPolicy: null,
+  notification: null,
+  onEnter: null,
+  onComplete: null,
+  onSkip: null,
+  onExit: null,
+} as const
+
+const testGraph: PhaseGraph = PhaseGraphSchema.parse({
   id: 'test',
-  name: 'Test workflow',
+  name: 'Test graph',
   phases: [
-    { id: 'focus', label: 'Focus', duration: Temporal.Duration.from({ seconds: 1500 }), kind: 'focus' },
-    { id: 'break', label: 'Short break', duration: Temporal.Duration.from({ seconds: 300 }), kind: 'break' },
-    { id: 'long-break', label: 'Long break', duration: Temporal.Duration.from({ seconds: 900 }), kind: 'break' },
+    PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: 'activeItem' }),
+    PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: 'dailyNote' }),
+    PhaseSchema.parse({ ...phaseDefaults, id: 'long-break', label: 'Long break', kind: 'break', duration: Temporal.Duration.from({ seconds: 900 }), logTarget: 'dailyNote' }),
+  ],
+  transitions: [
+    { fromPhaseId: 'focus', toPhaseId: 'long-break', condition: { kind: 'everyNth', n: 4 } },
+    { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+    { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    { fromPhaseId: 'long-break', toPhaseId: 'focus', condition: { kind: 'always' } },
   ],
 })
 
-describe('timerReducer', () => {
-  test('initialState builds stopped state at phase 0', () => {
-    const state = initialState(testWorkflow)
+describe('engineReducer', () => {
+  test('initialEngineState builds stopped state at the first declared phase', () => {
+    const state = initialEngineState(testGraph)
     expect(state.status).toBe('stopped')
-    expect(state.workflowId).toBe('test')
-    expect(state.currentPhaseIndex).toBe(0)
-    expect(state.remaining.total({ unit: 'seconds' })).toBe(1500)
+    expect(state.phaseGraphId).toBe(testGraphId)
+    expect(state.currentPhaseId).toBe(focusId)
+    expect(state.remaining?.total({ unit: 'seconds' })).toBe(1500)
     expect(state.activeFilePath).toBeNull()
   })
 
   test('start transitions to running and records file path', () => {
-    const state = initialState(testWorkflow)
-    const next = timerReducer(state, { type: 'start', filePath: 'task.md' }, testWorkflow)
+    const state = initialEngineState(testGraph)
+    const next = engineReducer(state, { type: 'start', filePath: 'task.md' }, testGraph)
     expect(next.status).toBe('running')
     expect(next.activeFilePath).toBe('task.md')
   })
 
   test('pause transitions running to paused', () => {
-    const state: TimerState = { ...initialState(testWorkflow), status: 'running' }
-    const next = timerReducer(state, { type: 'pause' }, testWorkflow)
+    const state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
+    const next = engineReducer(state, { type: 'pause' }, testGraph)
     expect(next.status).toBe('paused')
   })
 
   test('resume transitions paused to running', () => {
-    const state: TimerState = { ...initialState(testWorkflow), status: 'paused' }
-    const next = timerReducer(state, { type: 'resume' }, testWorkflow)
+    const state: EngineState = { ...initialEngineState(testGraph), status: 'paused' }
+    const next = engineReducer(state, { type: 'resume' }, testGraph)
     expect(next.status).toBe('running')
   })
 
-  test('stop resets to initial state at phase 0', () => {
-    const running: TimerState = {
+  test('stop resets to initial state at the first phase', () => {
+    const running: EngineState = {
       status: 'running',
-      workflowId: 'test',
-      currentPhaseIndex: 1,
+      phaseGraphId: testGraphId,
+      currentPhaseId: breakId,
       remaining: Temporal.Duration.from({ seconds: 42 }),
       activeFilePath: 'task.md',
+      phaseVisitCounts: { [focusId]: 1 },
     }
-    const next = timerReducer(running, { type: 'stop' }, testWorkflow)
+    const next = engineReducer(running, { type: 'stop' }, testGraph)
     expect(next.status).toBe('stopped')
-    expect(next.currentPhaseIndex).toBe(0)
-    expect(next.remaining.total({ unit: 'seconds' })).toBe(1500)
+    expect(next.currentPhaseId).toBe(focusId)
+    expect(next.remaining?.total({ unit: 'seconds' })).toBe(1500)
     expect(next.activeFilePath).toBeNull()
   })
 
   test('tick decrements remaining time by one second', () => {
-    const state: TimerState = {
-      ...initialState(testWorkflow),
+    const state: EngineState = {
+      ...initialEngineState(testGraph),
       status: 'running',
       remaining: Temporal.Duration.from({ seconds: 10 }),
     }
-    const next = timerReducer(state, { type: 'tick' }, testWorkflow)
-    expect(next.remaining.total({ unit: 'seconds' })).toBe(9)
+    const next = engineReducer(state, { type: 'tick' }, testGraph)
+    expect(next.remaining?.total({ unit: 'seconds' })).toBe(9)
     expect(next.status).toBe('running')
   })
 
   test('tick at 0 advances to next phase and stops', () => {
-    const state: TimerState = {
-      ...initialState(testWorkflow),
+    const state: EngineState = {
+      ...initialEngineState(testGraph),
       status: 'running',
       remaining: Temporal.Duration.from({ seconds: 0 }),
     }
-    const next = timerReducer(state, { type: 'tick' }, testWorkflow)
+    const next = engineReducer(state, { type: 'tick' }, testGraph)
     expect(next.status).toBe('stopped')
-    expect(next.currentPhaseIndex).toBe(1)
-    expect(next.remaining.total({ unit: 'seconds' })).toBe(300)
+    expect(next.currentPhaseId).toBe(breakId)
+    expect(next.remaining?.total({ unit: 'seconds' })).toBe(300)
   })
 
-  test('advance-phase cycles through all phases and wraps back to 0', () => {
-    const action: TimerAction = { type: 'advance-phase' }
-    const s0: TimerState = { ...initialState(testWorkflow), status: 'running' }
-    const s1 = timerReducer(s0, action, testWorkflow)
-    expect(s1.currentPhaseIndex).toBe(1)
-    expect(s1.remaining.total({ unit: 'seconds' })).toBe(300)
+  test('tick is a no-op for a duration-less phase', () => {
+    const state: EngineState = {
+      ...initialEngineState(testGraph),
+      status: 'running',
+      remaining: null,
+    }
+    const next = engineReducer(state, { type: 'tick' }, testGraph)
+    expect(next).toBe(state)
+  })
 
-    const s2 = timerReducer(s1, action, testWorkflow)
-    expect(s2.currentPhaseIndex).toBe(2)
-    expect(s2.remaining.total({ unit: 'seconds' })).toBe(900)
+  test('advance-phase cycles focus <-> break, taking the long break on the 4th focus exit', () => {
+    const action: EngineAction = { type: 'advance-phase' }
+    let state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
 
-    // Wraps back to phase 0
-    const s3 = timerReducer(s2, action, testWorkflow)
-    expect(s3.currentPhaseIndex).toBe(0)
-    expect(s3.remaining.total({ unit: 'seconds' })).toBe(1500)
+    // Exits 1-3 from focus: everyNth(4) not due yet, falls through to 'always' (break)
+    const expectedIds: PhaseId[] = [breakId, focusId, breakId, focusId, breakId, focusId]
+    for (const expected of expectedIds) {
+      state = engineReducer(state, action, testGraph)
+      expect(state.currentPhaseId).toBe(expected)
+    }
+
+    // 4th exit from focus: everyNth(4) is due, takes the long-break branch instead of 'always'
+    state = engineReducer(state, action, testGraph)
+    expect(state.currentPhaseId).toBe(longBreakId)
+    expect(state.remaining?.total({ unit: 'seconds' })).toBe(900)
+
+    // Exiting long-break falls back to 'always' -> focus
+    state = engineReducer(state, action, testGraph)
+    expect(state.currentPhaseId).toBe(focusId)
+  })
+
+  test('advance-phase throws when no transition is eligible from the current phase', () => {
+    const terminalGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'terminal',
+      name: 'Terminal graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'only', label: 'Only', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: 'activeItem' }),
+      ],
+      transitions: [],
+    })
+    const state: EngineState = { ...initialEngineState(terminalGraph), status: 'running' }
+    expect(() => engineReducer(state, { type: 'advance-phase' }, terminalGraph)).toThrow(
+      'PhaseGraph "terminal" has no eligible transition from phase "only"',
+    )
   })
 })

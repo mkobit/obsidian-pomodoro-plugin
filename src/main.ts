@@ -1,18 +1,18 @@
 import { Plugin, TFile } from 'obsidian'
 import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
-import { TimerStore } from './timer/store'
+import { EngineStore } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { POMODORO_WORKFLOW } from './timer/workflow'
+import { POMODORO_PHASE_GRAPH, FOCUS_PHASE_KIND, findPhaseById } from './timer/phase-graph'
 import { PomodoroTimerView } from './views/timer-view'
 
 export default class PomodoroPlugin extends Plugin {
   public settings: PomodoroSettings = DEFAULT_SETTINGS
-  public store!: TimerStore
+  public store!: EngineStore
   public ticker!: TimerTicker
 
   async onload() {
     await this.loadSettings()
-    this.store = new TimerStore(POMODORO_WORKFLOW)
+    this.store = new EngineStore(POMODORO_PHASE_GRAPH)
     this.ticker = new TimerTicker(action => this.store.dispatch(action))
 
     // Handle background ticker transitions
@@ -25,10 +25,11 @@ export default class PomodoroPlugin extends Plugin {
         this.ticker.stop()
       }
 
-      // Write back when the focus phase (index 0) completes and advances
+      // Write back when a focus-kind phase completes and advances
+      const lastPhase = findPhaseById(this.store.getGraph(), lastState.currentPhaseId)
       if (
-        lastState.currentPhaseIndex !== state.currentPhaseIndex
-        && lastState.currentPhaseIndex === 0
+        lastState.currentPhaseId !== state.currentPhaseId
+        && lastPhase?.kind === FOCUS_PHASE_KIND
         && state.activeFilePath
       ) {
         void this.handlePhaseComplete(state.activeFilePath)

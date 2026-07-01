@@ -5,8 +5,11 @@ import { PositiveDurationSchema } from '../domain/duration'
 /**
  * Identifier for a phase within a workflow. Branded so a PhaseId can't be
  * mixed up with a WorkflowId even though both are plain strings underneath.
+ * Brand tag is 'WorkflowPhaseId' (not 'PhaseId') so this doesn't collide
+ * with domain/phase/phase.ts's unrelated v2 PhaseId — the two aren't meant
+ * to be interchangeable even though this module predates that one.
  */
-export const PhaseIdSchema = z.string().min(1).brand<'PhaseId'>()
+export const PhaseIdSchema = z.string().min(1).brand<'WorkflowPhaseId'>()
 export type PhaseId = z.infer<typeof PhaseIdSchema>
 
 /**
@@ -14,7 +17,7 @@ export type PhaseId = z.infer<typeof PhaseIdSchema>
  * string rather than a fixed enum — a workflow's cycle may define categories
  * beyond focus/break, so this must not force everything into two buckets.
  */
-export const PhaseKindSchema = z.string().min(1).brand<'PhaseKind'>()
+export const PhaseKindSchema = z.string().min(1).brand<'WorkflowPhaseKind'>()
 export type PhaseKind = z.infer<typeof PhaseKindSchema>
 
 /** Built-in phase kinds used by the default Pomodoro workflow. */

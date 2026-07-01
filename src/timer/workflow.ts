@@ -1,20 +1,56 @@
 import { z } from 'zod'
+import { Temporal } from 'temporal-polyfill'
+import { PositiveDurationSchema } from '../domain/duration'
+
+/**
+ * Identifier for a phase within a workflow. Branded so a PhaseId can't be
+ * mixed up with a WorkflowId even though both are plain strings underneath.
+ */
+export const PhaseIdSchema = z.string().min(1).brand<'PhaseId'>()
+export type PhaseId = z.infer<typeof PhaseIdSchema>
+
+/**
+ * Semantic category of a phase (e.g. focus, break). Deliberately an open
+ * string rather than a fixed enum — a workflow's cycle may define categories
+ * beyond focus/break, so this must not force everything into two buckets.
+ */
+export const PhaseKindSchema = z.string().min(1).brand<'PhaseKind'>()
+export type PhaseKind = z.infer<typeof PhaseKindSchema>
+
+/** Built-in phase kinds used by the default Pomodoro workflow. */
+export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
+export const BREAK_PHASE_KIND = PhaseKindSchema.parse('break')
 
 /**
  * A single phase within a workflow cycle (e.g., focus, short break, long break).
- * Phases are generic — they have no semantic meaning baked in.
+ * Phases are generic — they have no semantic meaning baked in beyond `kind`.
  * The Pomodoro technique is one concrete application of a workflow.
  */
 export const PhaseSchema = z.object({
   /** Unique identifier for this phase within its workflow. */
-  id: z.string().min(1),
+  id: PhaseIdSchema,
   /** Human-readable label shown in the UI. */
   label: z.string().min(1),
-  /** Duration of this phase in seconds. */
-  durationSeconds: z.number().int().positive(),
+  /** Duration of this phase. */
+  duration: PositiveDurationSchema,
+  /** Semantic category of this phase, e.g. focus or break. */
+  kind: PhaseKindSchema,
 })
 
 export type Phase = z.infer<typeof PhaseSchema>
+
+/**
+ * Identifier for a workflow. Branded so a WorkflowId can't be mixed up with a PhaseId.
+ */
+export const WorkflowIdSchema = z.string().min(1).brand<'WorkflowId'>()
+export type WorkflowId = z.infer<typeof WorkflowIdSchema>
+
+/**
+ * Controls how the active task queue item advances when a phase completes.
+ * Only 'manual' has a reader today — 'auto' is a real value with no wired behavior yet.
+ */
+export const TaskAdvanceModeSchema = z.enum(['manual', 'auto'])
+export type TaskAdvanceMode = z.infer<typeof TaskAdvanceModeSchema>
 
 /**
  * A named ordered sequence of phases that cycles after completion.
@@ -22,24 +58,26 @@ export type Phase = z.infer<typeof PhaseSchema>
  */
 export const WorkflowSchema = z.object({
   /** Unique identifier for this workflow. */
-  id: z.string().min(1),
+  id: WorkflowIdSchema,
   /** Human-readable name shown in the UI. */
   name: z.string().min(1),
   /** Ordered list of phases. Must contain at least one phase. */
   phases: z.array(PhaseSchema).min(1),
+  /** How the active task queue item advances when a phase completes. */
+  taskAdvanceMode: TaskAdvanceModeSchema.default('manual'),
 })
 
 export type Workflow = z.infer<typeof WorkflowSchema>
 
 /** Built-in Pomodoro workflow (25 min focus → 5 min break, repeating). */
-export const POMODORO_WORKFLOW: Workflow = {
+export const POMODORO_WORKFLOW: Workflow = WorkflowSchema.parse({
   id: 'pomodoro',
   name: 'Pomodoro',
   phases: [
-    { id: 'focus', label: 'Focus', durationSeconds: 25 * 60 },
-    { id: 'break', label: 'Short break', durationSeconds: 5 * 60 },
+    { id: 'focus', label: 'Focus', duration: Temporal.Duration.from({ minutes: 25 }), kind: FOCUS_PHASE_KIND },
+    { id: 'break', label: 'Short break', duration: Temporal.Duration.from({ minutes: 5 }), kind: BREAK_PHASE_KIND },
   ],
-}
+})
 
 /**
  * Look up a phase by index within a workflow, cycling back to 0 after the last phase.

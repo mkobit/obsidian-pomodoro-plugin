@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { getPhaseAt, nextPhaseIndex } from './workflow'
 import type { Workflow } from './workflow'
+import { NonNegativeDurationSchema } from '../domain/duration'
 
 /**
  * Represents the current state of the timer state machine.
@@ -13,8 +14,8 @@ export const TimerStateSchema = z.object({
   workflowId: z.string(),
   /** Index into the workflow's phases array. */
   currentPhaseIndex: z.number().int().nonnegative(),
-  /** Seconds remaining in the current phase. */
-  remainingSeconds: z.number().int().nonnegative(),
+  /** Time remaining in the current phase. */
+  remaining: NonNegativeDurationSchema,
   /** The file path of the active task, if any. */
   activeFilePath: z.string().nullable(),
 })
@@ -38,7 +39,7 @@ export function initialState(workflow: Workflow): TimerState {
     status: 'stopped',
     workflowId: workflow.id,
     currentPhaseIndex: 0,
-    remainingSeconds: phase.durationSeconds,
+    remaining: phase.duration,
     activeFilePath: null,
   }
 }
@@ -66,8 +67,8 @@ export function timerReducer(
     case 'stop':
       return initialState(workflow)
     case 'tick':
-      return state.remainingSeconds > 0
-        ? { ...state, remainingSeconds: state.remainingSeconds - 1 }
+      return state.remaining.sign > 0
+        ? { ...state, remaining: state.remaining.subtract({ seconds: 1 }) }
         : advancePhase(state, workflow)
     case 'advance-phase':
       return advancePhase(state, workflow)
@@ -85,6 +86,6 @@ function advancePhase(state: TimerState, workflow: Workflow): TimerState {
     ...state,
     status: 'stopped',
     currentPhaseIndex: nextIndex,
-    remainingSeconds: nextPhase.durationSeconds,
+    remaining: nextPhase.duration,
   }
 }

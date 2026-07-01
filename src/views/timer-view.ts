@@ -43,8 +43,9 @@ export class PomodoroTimerView extends BasesView {
 
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'pomodoro-timer-panel' })
-    const mins = Math.floor(state.remainingSeconds / 60).toString().padStart(2, '0')
-    const secs = (state.remainingSeconds % 60).toString().padStart(2, '0')
+    const totalSeconds = state.remaining.total({ unit: 'seconds' })
+    const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+    const secs = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
     timerPanel.createEl('h2', { text: `${phase.label}: ${mins}:${secs} (${state.status})` })
 
     // Controls

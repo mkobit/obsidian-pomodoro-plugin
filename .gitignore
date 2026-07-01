@@ -43,3 +43,9 @@ build_output.log
 .dolt/
 *.db
 .beads-credential-key
+
+# Beads exports — bd dolt push/pull (refs/dolt/data on origin) is the durable
+# sync path; these are just local passive exports for scripting/grep, not
+# needed in git. config.yaml/metadata.json/README.md/hooks stay tracked.
+.beads/issues.jsonl
+.beads/interactions.jsonl

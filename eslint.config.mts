@@ -211,6 +211,17 @@ export default tseslint.config(
             immutability: 'Mutable',
             comparator: 'AtLeast',
           },
+          // zod's .brand() tags a type's output with a plain (non-readonly)
+          // marker property, so any branded id — and anything that embeds
+          // one — looks shallower than it really is to this checker (a
+          // branded string can't actually be mutated). ignoreIdentifierPattern
+          // below covers the ids themselves; types that embed one as a field
+          // (and so only reach ReadonlyShallow) are named here explicitly.
+          {
+            identifiers: '^(PhaseInstance|Session|TaskQueueItem)$',
+            immutability: 'ReadonlyShallow',
+            comparator: 'AtLeast',
+          },
           {
             identifiers: '^(?!I?Mutable).+',
             immutability: 'ReadonlyDeep',
@@ -218,6 +229,7 @@ export default tseslint.config(
           },
         ],
         ignoreInterfaces: false,
+        ignoreIdentifierPattern: ['Id$', 'Kind$'],
       }],
 
     },

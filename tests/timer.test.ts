@@ -10,19 +10,21 @@ void mock.module('obsidian', () => {
   }
 })
 
+import { Temporal } from 'temporal-polyfill'
 import { timerReducer, initialState } from '../src/timer/reducer'
 import type { TimerState, TimerAction } from '../src/timer/reducer'
+import { WorkflowSchema } from '../src/timer/workflow'
 import type { Workflow } from '../src/timer/workflow'
 
-const testWorkflow: Workflow = {
+const testWorkflow: Workflow = WorkflowSchema.parse({
   id: 'test',
   name: 'Test workflow',
   phases: [
-    { id: 'focus', label: 'Focus', durationSeconds: 1500 },
-    { id: 'break', label: 'Short break', durationSeconds: 300 },
-    { id: 'long-break', label: 'Long break', durationSeconds: 900 },
+    { id: 'focus', label: 'Focus', duration: Temporal.Duration.from({ seconds: 1500 }), kind: 'focus' },
+    { id: 'break', label: 'Short break', duration: Temporal.Duration.from({ seconds: 300 }), kind: 'break' },
+    { id: 'long-break', label: 'Long break', duration: Temporal.Duration.from({ seconds: 900 }), kind: 'break' },
   ],
-}
+})
 
 describe('timerReducer', () => {
   test('initialState builds stopped state at phase 0', () => {
@@ -30,7 +32,7 @@ describe('timerReducer', () => {
     expect(state.status).toBe('stopped')
     expect(state.workflowId).toBe('test')
     expect(state.currentPhaseIndex).toBe(0)
-    expect(state.remainingSeconds).toBe(1500)
+    expect(state.remaining.total({ unit: 'seconds' })).toBe(1500)
     expect(state.activeFilePath).toBeNull()
   })
 
@@ -58,29 +60,37 @@ describe('timerReducer', () => {
       status: 'running',
       workflowId: 'test',
       currentPhaseIndex: 1,
-      remainingSeconds: 42,
+      remaining: Temporal.Duration.from({ seconds: 42 }),
       activeFilePath: 'task.md',
     }
     const next = timerReducer(running, { type: 'stop' }, testWorkflow)
     expect(next.status).toBe('stopped')
     expect(next.currentPhaseIndex).toBe(0)
-    expect(next.remainingSeconds).toBe(1500)
+    expect(next.remaining.total({ unit: 'seconds' })).toBe(1500)
     expect(next.activeFilePath).toBeNull()
   })
 
-  test('tick decrements remaining seconds', () => {
-    const state: TimerState = { ...initialState(testWorkflow), status: 'running', remainingSeconds: 10 }
+  test('tick decrements remaining time by one second', () => {
+    const state: TimerState = {
+      ...initialState(testWorkflow),
+      status: 'running',
+      remaining: Temporal.Duration.from({ seconds: 10 }),
+    }
     const next = timerReducer(state, { type: 'tick' }, testWorkflow)
-    expect(next.remainingSeconds).toBe(9)
+    expect(next.remaining.total({ unit: 'seconds' })).toBe(9)
     expect(next.status).toBe('running')
   })
 
   test('tick at 0 advances to next phase and stops', () => {
-    const state: TimerState = { ...initialState(testWorkflow), status: 'running', remainingSeconds: 0 }
+    const state: TimerState = {
+      ...initialState(testWorkflow),
+      status: 'running',
+      remaining: Temporal.Duration.from({ seconds: 0 }),
+    }
     const next = timerReducer(state, { type: 'tick' }, testWorkflow)
     expect(next.status).toBe('stopped')
     expect(next.currentPhaseIndex).toBe(1)
-    expect(next.remainingSeconds).toBe(300)
+    expect(next.remaining.total({ unit: 'seconds' })).toBe(300)
   })
 
   test('advance-phase cycles through all phases and wraps back to 0', () => {
@@ -88,15 +98,15 @@ describe('timerReducer', () => {
     const s0: TimerState = { ...initialState(testWorkflow), status: 'running' }
     const s1 = timerReducer(s0, action, testWorkflow)
     expect(s1.currentPhaseIndex).toBe(1)
-    expect(s1.remainingSeconds).toBe(300)
+    expect(s1.remaining.total({ unit: 'seconds' })).toBe(300)
 
     const s2 = timerReducer(s1, action, testWorkflow)
     expect(s2.currentPhaseIndex).toBe(2)
-    expect(s2.remainingSeconds).toBe(900)
+    expect(s2.remaining.total({ unit: 'seconds' })).toBe(900)
 
     // Wraps back to phase 0
     const s3 = timerReducer(s2, action, testWorkflow)
     expect(s3.currentPhaseIndex).toBe(0)
-    expect(s3.remainingSeconds).toBe(1500)
+    expect(s3.remaining.total({ unit: 'seconds' })).toBe(1500)
   })
 })

@@ -1,28 +1,9 @@
-import { z } from 'zod'
-import { getPhaseAt, nextPhaseIndex } from './workflow'
-import type { Workflow } from './workflow'
-import { NonNegativeDurationSchema } from '../domain/duration'
+import type { EngineState } from '../domain/session/engine-state'
+import type { PhaseId } from '../domain/phase/phase'
+import type { PhaseGraph } from '../domain/phase/phase-graph'
+import { findPhaseById, resolveNextPhaseId } from './phase-graph'
 
-/**
- * Represents the current state of the timer state machine.
- * Phases are indexed into the active workflow — no hardcoded phase semantics here.
- */
-export const TimerStateSchema = z.object({
-  /** Whether the timer is running, paused, or stopped. */
-  status: z.enum(['running', 'paused', 'stopped']),
-  /** ID of the active workflow (for serialization/rehydration). */
-  workflowId: z.string(),
-  /** Index into the workflow's phases array. */
-  currentPhaseIndex: z.number().int().nonnegative(),
-  /** Time remaining in the current phase. */
-  remaining: NonNegativeDurationSchema,
-  /** The file path of the active task, if any. */
-  activeFilePath: z.string().nullable(),
-})
-
-export type TimerState = z.infer<typeof TimerStateSchema>
-
-export type TimerAction
+export type EngineAction
   = | { type: 'start', filePath?: string }
     | { type: 'pause' }
     | { type: 'resume' }
@@ -31,28 +12,31 @@ export type TimerAction
     | { type: 'advance-phase' }
 
 /**
- * Build the initial stopped state for a given workflow (at phase 0).
+ * Build the initial stopped state for a given phase graph, at its first
+ * declared phase (the graph's array order is the entry-point convention,
+ * same as v1 Workflow).
  */
-export function initialState(workflow: Workflow): TimerState {
-  const phase = getPhaseAt(workflow, 0)
+export function initialEngineState(graph: PhaseGraph): EngineState {
+  const startPhase = requirePhaseById(graph, graph.phases[0]?.id)
   return {
     status: 'stopped',
-    workflowId: workflow.id,
-    currentPhaseIndex: 0,
-    remaining: phase.duration,
+    phaseGraphId: graph.id,
+    currentPhaseId: startPhase.id,
+    remaining: startPhase.duration,
     activeFilePath: null,
+    phaseVisitCounts: {},
   }
 }
 
 /**
- * Pure reducer for the timer state machine.
- * Receives the active workflow so phase durations and progression are fully configurable.
+ * Pure reducer for the timer engine. Receives the active PhaseGraph so phase
+ * durations, transitions, and progression are fully configurable.
  */
-export function timerReducer(
-  state: TimerState,
-  action: TimerAction,
-  workflow: Workflow,
-): TimerState {
+export function engineReducer(
+  state: EngineState,
+  action: EngineAction,
+  graph: PhaseGraph,
+): EngineState {
   switch (action.type) {
     case 'start':
       return {
@@ -65,27 +49,48 @@ export function timerReducer(
     case 'resume':
       return { ...state, status: 'running' }
     case 'stop':
-      return initialState(workflow)
+      return initialEngineState(graph)
     case 'tick':
+      if (state.remaining === null) {
+        // Duration-less (manual/until-dismissed) phase: nothing to count down.
+        return state
+      }
       return state.remaining.sign > 0
         ? { ...state, remaining: state.remaining.subtract({ seconds: 1 }) }
-        : advancePhase(state, workflow)
+        : advancePhase(state, graph)
     case 'advance-phase':
-      return advancePhase(state, workflow)
+      return advancePhase(state, graph)
   }
 }
 
 /**
- * Advance to the next phase in the workflow cycle.
- * The timer stops when a phase completes — the UI or host decides whether to auto-start.
+ * Advance out of the current phase, resolving the next phase via the
+ * graph's transitions. The timer stops when a phase completes — the UI or
+ * host decides whether to auto-start the next one.
  */
-function advancePhase(state: TimerState, workflow: Workflow): TimerState {
-  const nextIndex = nextPhaseIndex(workflow, state.currentPhaseIndex)
-  const nextPhase = getPhaseAt(workflow, nextIndex)
+function advancePhase(state: EngineState, graph: PhaseGraph): EngineState {
+  const updatedCounts = {
+    ...state.phaseVisitCounts,
+    [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
+  }
+  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts)
+  const nextPhase = requirePhaseById(graph, nextPhaseId)
   return {
     ...state,
     status: 'stopped',
-    currentPhaseIndex: nextIndex,
+    currentPhaseId: nextPhaseId,
     remaining: nextPhase.duration,
+    phaseVisitCounts: updatedCounts,
   }
+}
+
+function requirePhaseById(graph: PhaseGraph, id: PhaseId | undefined) {
+  if (id === undefined) {
+    throw new Error(`PhaseGraph "${graph.id}" has no phases`)
+  }
+  const phase = findPhaseById(graph, id)
+  if (phase === undefined) {
+    throw new Error(`PhaseGraph "${graph.id}" has no phase "${id}"`)
+  }
+  return phase
 }

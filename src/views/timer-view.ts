@@ -1,7 +1,8 @@
 import { BasesView } from 'obsidian'
 import type { ViewOption, QueryController } from 'obsidian'
 import type PomodoroPlugin from '../main'
-import type { TimerState } from '../timer/reducer'
+import type { EngineState } from '../domain/session/engine-state'
+import { findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer'
@@ -32,12 +33,12 @@ export class PomodoroTimerView extends BasesView {
     this.render(this.plugin.store.getState())
   }
 
-  private render(state: TimerState) {
+  private render(state: EngineState) {
     this.containerEl.empty()
 
-    const workflow = this.plugin.store.getWorkflow()
-    const phase = workflow.phases[state.currentPhaseIndex]
-    if (!phase) {
+    const graph = this.plugin.store.getGraph()
+    const phase = findPhaseById(graph, state.currentPhaseId)
+    if (!phase || state.remaining === null) {
       return
     }
 
@@ -64,7 +65,7 @@ export class PomodoroTimerView extends BasesView {
     stopBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'stop' }))
 
     // Determine phase type to choose appropriate filters
-    const isFocus = phase.id.toLowerCase().includes('focus') || phase.id.toLowerCase().includes('work')
+    const isFocus = phase.kind === FOCUS_PHASE_KIND
     const queueTitle = isFocus ? 'Work queue' : 'Break queue'
     const propId = isFocus ? this.config.getAsPropertyId('focusProperty') : this.config.getAsPropertyId('breakProperty')
     const targetVal = isFocus

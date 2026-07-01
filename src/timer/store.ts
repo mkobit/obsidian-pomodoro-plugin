@@ -1,35 +1,36 @@
-import { timerReducer, initialState } from './reducer'
-import type { TimerState, TimerAction } from './reducer'
-import type { Workflow } from './workflow'
+import { engineReducer, initialEngineState } from './reducer'
+import type { EngineAction } from './reducer'
+import type { EngineState } from '../domain/session/engine-state'
+import type { PhaseGraph } from '../domain/phase/phase-graph'
 
 /**
- * Holds the current TimerState and routes dispatched actions through the pure reducer.
- * Notifies subscribers after each state transition.
- * Accepts a Workflow via dependency injection — no hardcoded phase semantics.
+ * Holds the current EngineState and routes dispatched actions through the
+ * pure reducer. Notifies subscribers after each state transition.
+ * Accepts a PhaseGraph via dependency injection — no hardcoded phase semantics.
  */
-export class TimerStore {
-  private state: TimerState
-  private workflow: Workflow
-  private listeners: ((state: TimerState) => void)[] = []
+export class EngineStore {
+  private state: EngineState
+  private graph: PhaseGraph
+  private listeners: ((state: EngineState) => void)[] = []
 
-  constructor(workflow: Workflow) {
-    this.workflow = workflow
-    this.state = initialState(workflow)
+  constructor(graph: PhaseGraph) {
+    this.graph = graph
+    this.state = initialEngineState(graph)
   }
 
-  public getState(): TimerState {
+  public getState(): EngineState {
     return this.state
   }
 
-  public subscribe(listener: (state: TimerState) => void): () => void {
+  public subscribe(listener: (state: EngineState) => void): () => void {
     this.listeners.push(listener)
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener)
     }
   }
 
-  public dispatch(action: TimerAction) {
-    const next = timerReducer(this.state, action, this.workflow)
+  public dispatch(action: EngineAction) {
+    const next = engineReducer(this.state, action, this.graph)
     if (next !== this.state) {
       this.state = next
       for (const listener of this.listeners) {
@@ -39,18 +40,18 @@ export class TimerStore {
   }
 
   /**
-   * Switch to a different workflow and reset to its initial state.
-   * Use when the user selects a different workflow in settings.
+   * Switch to a different phase graph and reset to its initial state.
+   * Use when the user selects a different routine in settings.
    */
-  public setWorkflow(workflow: Workflow) {
-    this.workflow = workflow
-    this.state = initialState(workflow)
+  public setGraph(graph: PhaseGraph) {
+    this.graph = graph
+    this.state = initialEngineState(graph)
     for (const listener of this.listeners) {
       listener(this.state)
     }
   }
 
-  public getWorkflow(): Workflow {
-    return this.workflow
+  public getGraph(): PhaseGraph {
+    return this.graph
   }
 }

@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
 import { PositiveDurationSchema, NonNegativeDurationSchema } from '../src/domain/duration'
-import { LogEntrySchema } from '../src/domain/log-entry'
+import { LogEntrySchema } from '../src/domain/mutation/log-entry'
 import { WorkflowSchema } from '../src/timer/workflow'
 
 describe('PositiveDurationSchema', () => {

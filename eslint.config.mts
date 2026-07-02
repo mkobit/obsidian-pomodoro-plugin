@@ -295,6 +295,11 @@ export default tseslint.config(
         ignoreAccessorPattern: ['this.**'],
       }],
       '@typescript-eslint/no-unused-expressions': 'off',
+      // Method-shorthand signatures are bivariant on their parameter types;
+      // property/arrow signatures are checked contravariantly. Port
+      // interfaces that must accept Obsidian's real classes (e.g. Vault,
+      // FileManager) structurally, without a cast, need that bivariance.
+      'functional/prefer-property-signatures': 'off',
     },
   },
   // Overrides for Tests

@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './s
 import { EngineStore } from './timer/store'
 import { TimerTicker } from './timer/ticker'
 import { POMODORO_PHASE_GRAPH, FOCUS_PHASE_KIND, findPhaseById } from './timer/phase-graph'
+import { ObsidianFileMutationPort } from './timer/obsidian-file-mutation-port'
 import { PomodoroTimerView } from './views/timer-view'
 
 export default class PomodoroPlugin extends Plugin {
@@ -12,7 +13,10 @@ export default class PomodoroPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings()
-    this.store = new EngineStore(POMODORO_PHASE_GRAPH)
+    const port = new ObsidianFileMutationPort(this.app)
+    // No phase currently sets onEnter/onComplete/onSkip/onExit, so there's nothing to resolve yet.
+    const hookRegistry = { resolve: () => undefined }
+    this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port)
     this.ticker = new TimerTicker(action => void this.store.dispatch(action))
 
     // Handle background ticker transitions

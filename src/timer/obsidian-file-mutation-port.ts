@@ -1,0 +1,82 @@
+import type { FileMutation } from '../domain/mutation/file-mutation'
+import type { FileMutationPort } from '../domain/mutation/apply-mutations'
+
+/**
+ * Only the field this port actually reads off a resolved file. Deliberately
+ * not Obsidian's real `TFile` — `TFile` is a recursive class (`TFile.vault:
+ * Vault`) with no runtime module outside the Obsidian app itself, so faking
+ * one for a test would need an `as TFile` cast (flagged by
+ * eslint-plugin-obsidianmd's `no-tfile-tfolder-cast`, for good reason: nothing
+ * verifies the fake actually matches Obsidian's real shape). A real `TFile`
+ * satisfies this structurally with zero cast, since `TFile` has strictly more
+ * fields than this needs.
+ */
+export interface VaultFile {
+  readonly path: string
+}
+
+/**
+ * The exact vault/fileManager surface this port needs, rather than the full
+ * `App` — keeps test fakes to 3 plain-object methods instead of `App`'s (or
+ * `TFile`'s) entire shape, and avoids casts at test call sites.
+ */
+export interface ObsidianFileMutationPortDeps {
+  readonly vault: {
+    // Method-shorthand (not property/arrow syntax) deliberately: it makes the
+    // `file` parameter bivariant, so the real `Vault` (whose methods take the
+    // much wider `TFile`) satisfies this narrower `VaultFile`-based shape
+    // without a cast.
+    getFileByPath(path: string): VaultFile | null
+    append(file: VaultFile, data: string): Promise<void>
+  }
+  readonly fileManager: {
+    processFrontMatter(file: VaultFile, fn: (frontmatter: Record<string, unknown>) => void): Promise<void>
+  }
+}
+
+function resolveFile(vault: ObsidianFileMutationPortDeps['vault'], filePath: string): VaultFile {
+  const file = vault.getFileByPath(filePath)
+  if (file === null) {
+    throw new Error(`FileMutationPort: no file found at path "${filePath}"`)
+  }
+  return file
+}
+
+const notYetSupported = (kind: Extract<FileMutation, { kind: 'queueReorder' | 'queueStatusChange' }>['kind']): Promise<void> =>
+  Promise.reject(new Error(
+    `FileMutationPort: "${kind}" mutations are not yet supported — there is no TaskSource/queue runtime `
+    + 'to resolve a TaskQueueItemId to a vault file yet (see flow-gu1.9).',
+  ))
+
+/**
+ * Real, Obsidian-backed `FileMutationPort`. See
+ * openspec/specs/obsidian-file-mutation-port/spec.md.
+ *
+ * A class, not a factory function, so `functional/immutable-data`'s
+ * `ignoreClasses` exemption (see eslint.config.mts's `src/timer/**`
+ * override) covers the frontmatter-callback mutation `processFrontMatter`
+ * requires — that Obsidian API has no non-mutating shape.
+ */
+export class ObsidianFileMutationPort implements FileMutationPort {
+  constructor(private readonly deps: ObsidianFileMutationPortDeps) {}
+
+  async writeFrontmatter(mutation: Extract<FileMutation, { kind: 'frontmatter' }>): Promise<void> {
+    const file = resolveFile(this.deps.vault, mutation.filePath)
+    await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter[mutation.property] = mutation.value
+    })
+  }
+
+  async appendText(mutation: Extract<FileMutation, { kind: 'append' }>): Promise<void> {
+    const file = resolveFile(this.deps.vault, mutation.filePath)
+    await this.deps.vault.append(file, mutation.text)
+  }
+
+  reorderQueueItem(_mutation: Extract<FileMutation, { kind: 'queueReorder' }>): Promise<void> {
+    return notYetSupported('queueReorder')
+  }
+
+  changeQueueItemStatus(_mutation: Extract<FileMutation, { kind: 'queueStatusChange' }>): Promise<void> {
+    return notYetSupported('queueStatusChange')
+  }
+}

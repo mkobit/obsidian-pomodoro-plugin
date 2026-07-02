@@ -7,7 +7,7 @@ Hooks and completion policies both intend to produce `FileMutation[]` write-back
 
 - Add `FileMutationPort`, a domain-layer interface with one typed method per `FileMutation` kind (`writeFrontmatter`, `appendText`, `reorderQueueItem`, `changeQueueItemStatus`).
 - Add `applyMutations(port, mutations)`, a sequential, fail-fast async dispatcher that routes each mutation to its matching port method.
-- Add `MutationApplyError`, thrown on the first failed mutation, carrying the offending mutation and its cause.
+- Add `ApplyMutationsResult`, a discriminated union (`{ success: true } | { success: false, mutation, cause }`) resolved on the first failed mutation, carrying the offending mutation and its cause — mirrors zod's `safeParse` convention rather than throwing/rejecting (see design.md's Decisions for why: `src/domain/**` is held to strict functional-style lint rules that disallow `throw`/`Promise.reject`/classes, unlike the Obsidian-API-driven `src/timer/**`).
 - Add unit tests against a hand-written fake `FileMutationPort`.
 - Do **not** add a real Obsidian-backed `FileMutationPort` implementation — deferred to a later bead once the surrounding Obsidian integration layer (TaskSource, frontmatter write-back triggers) is ready.
 - Do **not** wire `applyMutations` into `src/timer/reducer.ts`, `src/timer/store.ts`, or `EngineState` — that is flow-qx9 and flow-xn3.
@@ -23,7 +23,7 @@ Hooks and completion policies both intend to produce `FileMutation[]` write-back
 
 ## Impact
 
-- New file: `src/domain/mutation/apply-mutations.ts` (exports `FileMutationPort`, `MutationApplyError`, `applyMutations`).
+- New file: `src/domain/mutation/apply-mutations.ts` (exports `FileMutationPort`, `ApplyMutationsResult`, `applyMutations`).
 - New test file: `tests/apply-mutations.test.ts`.
 - No changes to `src/timer/reducer.ts`, `src/timer/store.ts`, or `src/domain/session/engine-state.ts`.
 - No new runtime dependencies.

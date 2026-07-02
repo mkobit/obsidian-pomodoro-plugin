@@ -13,7 +13,7 @@ export default class PomodoroPlugin extends Plugin {
   async onload() {
     await this.loadSettings()
     this.store = new EngineStore(POMODORO_PHASE_GRAPH)
-    this.ticker = new TimerTicker(action => this.store.dispatch(action))
+    this.ticker = new TimerTicker(action => void this.store.dispatch(action))
 
     // Handle background ticker transitions
     let lastState = this.store.getState()

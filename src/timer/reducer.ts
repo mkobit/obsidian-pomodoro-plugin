@@ -1,6 +1,10 @@
+import { Temporal } from 'temporal-polyfill'
 import type { EngineState } from '../domain/session/engine-state'
-import type { PhaseId } from '../domain/phase/phase'
+import type { Phase, PhaseId } from '../domain/phase/phase'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
+import type { HookContext, HookEvent } from '../domain/hook/hook'
+import { PhaseInstanceIdSchema, SessionIdSchema } from '../domain/session/session'
+import type { PhaseInstance, PhaseInstanceEndReason, Session } from '../domain/session/session'
 import { findPhaseById, resolveNextPhaseId } from './phase-graph'
 
 export type EngineAction
@@ -61,6 +65,112 @@ export function engineReducer(
     case 'advance-phase':
       return advancePhase(state, graph)
   }
+}
+
+/** One lifecycle hook event observed for a specific phase during a single dispatch. */
+export interface HookEventOccurrence {
+  readonly event: HookEvent
+  readonly phase: Phase
+}
+
+/**
+ * Derives which onEnter/onComplete/onSkip/onExit events fired for a single
+ * dispatch, by observing the pre- and post-reduce EngineState plus the
+ * action that produced the transition — engineReducer itself stays
+ * hook-unaware. Doesn't duplicate reducer logic, just interprets its output;
+ * see design.md for the full derivation-rules table and rationale.
+ */
+export function deriveHookEvents(
+  prevState: EngineState,
+  nextState: EngineState,
+  action: EngineAction,
+  graph: PhaseGraph,
+): readonly HookEventOccurrence[] {
+  const prevPhase = requirePhaseById(graph, prevState.currentPhaseId)
+
+  if (action.type === 'tick') {
+    if (nextState.status === 'completed' && prevState.status !== 'completed') {
+      return [{ event: 'onComplete', phase: prevPhase }]
+    }
+    if (prevState.currentPhaseId !== nextState.currentPhaseId) {
+      const nextPhase = requirePhaseById(graph, nextState.currentPhaseId)
+      return [
+        { event: 'onComplete', phase: prevPhase },
+        { event: 'onExit', phase: prevPhase },
+        { event: 'onEnter', phase: nextPhase },
+      ]
+    }
+    return []
+  }
+
+  if (action.type === 'advance-phase') {
+    const nextPhase = requirePhaseById(graph, nextState.currentPhaseId)
+    const abandoned = prevState.status === 'running' || prevState.status === 'paused'
+    return [
+      ...(abandoned ? [{ event: 'onSkip', phase: prevPhase } as const] : []),
+      { event: 'onExit', phase: prevPhase },
+      { event: 'onEnter', phase: nextPhase },
+    ]
+  }
+
+  return []
+}
+
+/**
+ * Builds a throwaway HookContext for a single hook invocation. EngineState
+ * doesn't track PhaseInstance/Session history yet (flow-c08 will design real
+ * tracking) — every field below is either read from EngineState or a
+ * best-effort/permissive placeholder, documented per-field, and discarded
+ * once the hook returns.
+ */
+export function synthesizeHookContext(
+  phase: Phase,
+  event: HookEvent,
+  nextState: EngineState,
+): HookContext {
+  const now = Temporal.Now.instant()
+  const plannedDuration = phase.duration
+  const actualDuration = event === 'onEnter'
+    ? Temporal.Duration.from({ seconds: 0 })
+    : plannedDuration === null
+      ? Temporal.Duration.from({ seconds: 0 })
+      // Best-effort "how much of the plan elapsed", not a wall-clock measurement — superseded once flow-c08 tracks real elapsed time.
+      : plannedDuration.subtract(nextState.remaining ?? plannedDuration)
+  const endReason: PhaseInstanceEndReason | null = event === 'onComplete'
+    ? 'completed'
+    : event === 'onSkip'
+      ? 'skipped'
+      : null
+
+  const instance: PhaseInstance = {
+    // Fresh id per hook call, not stable across a phase's lifetime — superseded once flow-c08 tracks real PhaseInstance identity.
+    id: PhaseInstanceIdSchema.parse(crypto.randomUUID()),
+    phaseId: phase.id,
+    plannedDuration,
+    actualDuration,
+    // "Now" at hook-fire time, not the phase's real start — EngineState doesn't track one.
+    startedAt: now,
+    endedAt: event === 'onEnter' ? null : now,
+    endReason,
+    // No TaskSource/TaskQueueItem runtime integration yet (flow-gu1.9).
+    activeItem: null,
+    itemsTouched: [],
+    // This call's own mutations are its return value, not known yet while its context is being built.
+    mutationsApplied: [],
+  }
+
+  const session: Session = {
+    // Fresh id per hook call, not a real session identity — superseded once flow-c08 lands.
+    id: SessionIdSchema.parse(crypto.randomUUID()),
+    phaseGraphId: nextState.phaseGraphId,
+    // Not the session's real start time — EngineState doesn't track when the session began.
+    startedAt: now,
+    endedAt: event === 'onEnter' ? null : now,
+    // No accumulated history — this session object is not a real traversal record.
+    history: [],
+  }
+
+  return { phase, instance, session }
 }
 
 /**

@@ -57,10 +57,30 @@ export function engineReducer(
       }
       return state.remaining.sign > 0
         ? { ...state, remaining: state.remaining.subtract({ seconds: 1 }) }
-        : advancePhase(state, graph)
+        : completePhase(state, graph)
     case 'advance-phase':
       return advancePhase(state, graph)
   }
+}
+
+/**
+ * Natural (tick-driven) completion of the current phase — branches on its
+ * completionPolicy. Unlike advancePhase (an explicit override dispatched via
+ * the 'advance-phase' action, which always advances regardless of policy),
+ * this is only reached when a phase's duration actually elapses.
+ */
+function completePhase(state: EngineState, graph: PhaseGraph): EngineState {
+  const phase = requirePhaseById(graph, state.currentPhaseId)
+  const policy = phase.completionPolicy
+  if (policy === null || policy.kind === 'noOp') {
+    return advancePhase(state, graph)
+  }
+  if (policy.kind === 'manualClear') {
+    return { ...state, status: 'completed' }
+  }
+  throw new Error(
+    `Phase "${phase.id}" has completionPolicy "${policy.kind}", which the engine doesn't execute yet.`,
+  )
 }
 
 /**

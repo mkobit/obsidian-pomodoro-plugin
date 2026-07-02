@@ -3,8 +3,13 @@ import type { Temporal } from 'temporal-polyfill'
 import type { PhaseId } from '../phase/phase'
 import type { PhaseGraphId } from '../phase/phase-graph'
 
-/** Whether the engine's ticker is running, paused, or stopped. */
-export const EngineStatusSchema = z.enum(['running', 'paused', 'stopped'])
+/**
+ * Whether the engine's ticker is running, paused, or stopped. `'completed'` is
+ * distinct from `'stopped'` — a `manualClear`-policy phase that reaches zero
+ * remaining sits here, at the same phase, until an explicit `advance-phase`
+ * moves on; `'stopped'` means reset to the graph's first phase.
+ */
+export const EngineStatusSchema = z.enum(['running', 'paused', 'stopped', 'completed'])
 export type EngineStatus = z.infer<typeof EngineStatusSchema>
 
 /**

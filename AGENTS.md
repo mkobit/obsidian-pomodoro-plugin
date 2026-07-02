@@ -13,12 +13,18 @@ The project enforces strict Functional Programming principles via `eslint`.
 
 ## Commands
 
+No CLI is installed globally.
+Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it's on `PATH`.
+
 | Command | Description |
 | :--- | :--- |
 | `bun run build` | Compiles the plugin using esbuild. |
 | `bun test` | Executes unit tests via bun test. |
 | `bun run test:e2e` | Runs E2E tests using Playwright. |
+| `bun run typecheck` | Type-checks with `tsc --noEmit`. |
+| `bun run lint` | Lints with `eslint .`. |
 | `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault. |
+| `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). |
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker

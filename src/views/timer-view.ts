@@ -54,15 +54,15 @@ export class PomodoroTimerView extends BasesView {
 
     if (state.status !== 'running') {
       const playBtn = controls.createEl('button', { text: 'Start' })
-      playBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'start' }))
+      playBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'start' }))
     }
     else {
       const pauseBtn = controls.createEl('button', { text: 'Pause' })
-      pauseBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'pause' }))
+      pauseBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'pause' }))
     }
 
     const stopBtn = controls.createEl('button', { text: 'Reset' })
-    stopBtn.addEventListener('click', () => this.plugin.store.dispatch({ type: 'stop' }))
+    stopBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'stop' }))
 
     // Determine phase type to choose appropriate filters
     const isFocus = phase.kind === FOCUS_PHASE_KIND
@@ -99,7 +99,7 @@ export class PomodoroTimerView extends BasesView {
         li.addClass('is-active-task')
       }
       taskBtn.addEventListener('click', () => {
-        this.plugin.store.dispatch({ type: 'start', filePath: entry.file.path })
+        void this.plugin.store.dispatch({ type: 'start', filePath: entry.file.path })
       })
     }
   }

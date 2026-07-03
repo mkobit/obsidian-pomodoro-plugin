@@ -22,5 +22,38 @@
         "matcher": ""
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(bd *)",
+      "Bash(bun x openspec *)",
+      "Bash(bunx openspec *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git rm *)",
+      "Bash(git checkout -b *)",
+      "Bash(git switch *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(bun run lint)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run test)",
+      "Bash(bun run test:coverage)",
+      "Bash(bun test)",
+      "Bash(bun test *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr comment *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git branch -D*)",
+      "Bash(git push --force*)",
+      "Bash(rm -rf*)"
+    ]
   }
 }

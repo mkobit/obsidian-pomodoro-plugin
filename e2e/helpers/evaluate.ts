@@ -20,8 +20,15 @@ export async function evaluateObsidian<T, A>(
 ): Promise<T> {
   const fnSrc = fn.toString()
   return page.evaluate(([src, fnArgs]) => {
+    // `Function`'s call signature is untyped (`(...args: any[]) => any` isn't even
+    // declared on it in lib.es5), so recovering the shape of dynamically-built code
+    // has no cast-free option — this is the one genuine boundary case.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const fnObj = new Function(`return (${src})`)() as (app: App, a?: unknown) => T | Promise<T>
-    const obsidianApp = (activeWindow as Window & { app: App }).app
+    const obsidianApp = activeWindow.app
+    if (!obsidianApp) {
+      throw new Error('evaluateObsidian: window.app is not ready — Obsidian has not finished loading')
+    }
     return fnObj(obsidianApp, fnArgs)
   }, [fnSrc, args] as const)
 }

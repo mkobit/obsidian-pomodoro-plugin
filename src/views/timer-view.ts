@@ -68,9 +68,9 @@ export class PomodoroTimerView extends BasesView {
     const isFocus = phase.kind === FOCUS_PHASE_KIND
     const queueTitle = isFocus ? 'Work queue' : 'Break queue'
     const propId = isFocus ? this.config.getAsPropertyId('focusProperty') : this.config.getAsPropertyId('breakProperty')
-    const targetVal = isFocus
-      ? (this.config.get('focusValue') as string || 'work')
-      : (this.config.get('breakValue') as string || 'break')
+    const rawTargetVal = isFocus ? this.config.get('focusValue') : this.config.get('breakValue')
+    const targetValFallback = isFocus ? 'work' : 'break'
+    const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
 
     const entries = this.data?.data || []
     const filteredEntries = entries.filter((entry) => {

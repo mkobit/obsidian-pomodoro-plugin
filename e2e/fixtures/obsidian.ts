@@ -70,7 +70,7 @@ export const test = base.extend<ObsidianFixtures>({
     const page = context.pages()[0] ?? await context.newPage()
 
     await page.waitForFunction(
-      () => typeof (window as { app?: unknown }).app !== 'undefined',
+      () => typeof window.app !== 'undefined',
       { timeout: 30_000 },
     )
 

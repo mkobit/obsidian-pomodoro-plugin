@@ -272,7 +272,6 @@ export default tseslint.config(
       // The Obsidian API necessitates classes, inheritance, side effects, and mutations (of 'this').
       'functional/no-let': 'off',
       'functional/no-expression-statements': 'off',
-      '@typescript-eslint/consistent-type-assertions': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
@@ -316,7 +315,6 @@ export default tseslint.config(
       'functional/no-expression-statements': 'off', // Needed for expect() assertions
       'import/no-extraneous-dependencies': ['error', { devDependencies: true }], // Allow devDependencies in tests
       'import/no-nodejs-modules': 'off', // Node built-ins are allowed in tests and e2e fixtures
-      '@typescript-eslint/consistent-type-assertions': 'off', // Needed for mocking
       '@typescript-eslint/no-unsafe-argument': 'off', // Allow unsafe args in tests
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',

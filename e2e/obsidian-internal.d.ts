@@ -3,6 +3,17 @@
 // but are intentionally undocumented. Keep this surface minimal — add a member
 // only when an e2e test demonstrably needs it, with a comment explaining why.
 import 'obsidian'
+import type { App } from 'obsidian'
+
+declare global {
+  interface Window {
+    // Exposed by Obsidian's Electron renderer for devtools access to the running app.
+    // Undefined until the renderer finishes loading — see the `waitForFunction`
+    // gate in e2e/fixtures/obsidian.ts. Stays optional so call sites can't
+    // accidentally skip that check without a type error.
+    readonly app?: App
+  }
+}
 
 declare module 'obsidian' {
   interface PluginsRegistry {

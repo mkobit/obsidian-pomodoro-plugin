@@ -32,6 +32,7 @@
       "Bash(git commit *)",
       "Bash(git rm *)",
       "Bash(git checkout -b *)",
+      "Bash(git branch *)",
       "Bash(git switch *)",
       "Bash(git pull *)",
       "Bash(git fetch *)",

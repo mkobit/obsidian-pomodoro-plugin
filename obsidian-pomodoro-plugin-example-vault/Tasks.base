@@ -6,3 +6,8 @@ fields:
     type: date
   - name: priority
     type: number
+views:
+  - type: table
+    name: Table
+  - type: pomodoro-timer
+    name: Pomodoro

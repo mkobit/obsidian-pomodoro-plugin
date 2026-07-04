@@ -22,11 +22,23 @@ export const PhaseKindSchema = z.string().min(1).brand<'PhaseKind'>()
 export type PhaseKind = z.infer<typeof PhaseKindSchema>
 
 /**
- * Where a completed phase's write-back goes when there's no active queue
- * item to target — e.g. a stretch break has no item at all, so completion
- * logs against the daily note instead.
+ * Name of a write-back target resolver looked up in a LogTargetResolverRegistry.
+ * Never eval'd from settings/frontmatter — always a lookup against code the
+ * plugin (or a registering third party) actually shipped.
  */
-export const PhaseLogTargetSchema = z.enum(['dailyNote', 'activeItem'])
+export const LogTargetResolverNameSchema = z.string().min(1).brand<'LogTargetResolverName'>()
+export type LogTargetResolverName = z.infer<typeof LogTargetResolverNameSchema>
+
+/**
+ * Where a completed phase's write-back goes: the engine's active queue item,
+ * or a named callback resolved via a LogTargetResolverRegistry (e.g. a
+ * stretch break has no active item at all, so completion logs against
+ * whatever the named resolver — e.g. a future daily-note resolver — returns).
+ */
+export const PhaseLogTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('activeItem') }),
+  z.object({ kind: z.literal('callback'), name: LogTargetResolverNameSchema }),
+]).readonly()
 export type PhaseLogTarget = z.infer<typeof PhaseLogTargetSchema>
 
 /**

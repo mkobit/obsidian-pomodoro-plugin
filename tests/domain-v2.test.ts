@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
-import { PhaseSchema } from '../src/domain/phase/phase'
+import { LogTargetResolverNameSchema, PhaseSchema } from '../src/domain/phase/phase'
 import { PhaseGraphSchema } from '../src/domain/phase/phase-graph'
 import { CompletionPolicySchema } from '../src/domain/policy/completion-policy'
 import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
@@ -14,7 +14,7 @@ const minimalPhase = {
   taskSourceId: null,
   completionPolicy: null,
   notification: null,
-  logTarget: 'activeItem',
+  logTarget: { kind: 'activeItem' },
   onEnter: null,
   onComplete: null,
   onSkip: null,
@@ -34,6 +34,24 @@ describe('PhaseSchema', () => {
 
   test('rejects a zero duration', () => {
     const result = PhaseSchema.safeParse({ ...minimalPhase, duration: Temporal.Duration.from({ seconds: 0 }) })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('PhaseLogTargetSchema', () => {
+  test('parses an activeItem log target with no additional parameters', () => {
+    const result = PhaseSchema.safeParse({ ...minimalPhase, logTarget: { kind: 'activeItem' } })
+    expect(result.success).toBe(true)
+  })
+
+  test('parses a callback log target carrying a resolver name', () => {
+    const result = PhaseSchema.safeParse({ ...minimalPhase, logTarget: { kind: 'callback', name: 'dailyNote' } })
+    expect(result.success).toBe(true)
+    expect(result.success && result.data.logTarget).toEqual({ kind: 'callback', name: LogTargetResolverNameSchema.parse('dailyNote') })
+  })
+
+  test('rejects the old bare-string enum shape', () => {
+    const result = PhaseSchema.safeParse({ ...minimalPhase, logTarget: 'activeItem' })
     expect(result.success).toBe(false)
   })
 })

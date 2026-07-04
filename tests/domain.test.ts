@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
 import { PositiveDurationSchema, NonNegativeDurationSchema } from '../src/domain/duration'
-import { LogEntrySchema } from '../src/domain/mutation/log-entry'
+import { LogEntrySchema, nextLogEntry } from '../src/domain/mutation/log-entry'
 
 describe('PositiveDurationSchema', () => {
   test('accepts a positive duration', () => {
@@ -45,5 +45,40 @@ describe('LogEntrySchema', () => {
       recordedAt: Temporal.Now.instant(),
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('nextLogEntry', () => {
+  const now = Temporal.Now.instant()
+
+  test('increments a numeric current value by 1', () => {
+    const entry = nextLogEntry(3, 'pomodoros', now)
+    expect(entry).toEqual({ property: 'pomodoros', value: 4, recordedAt: now })
+  })
+
+  test('yields 1 for an undefined current value', () => {
+    const entry = nextLogEntry(undefined, 'pomodoros', now)
+    expect(entry.value).toBe(1)
+  })
+
+  test('yields 1 for a non-numeric current value', () => {
+    const entry = nextLogEntry('not-a-number', 'pomodoros', now)
+    expect(entry.value).toBe(1)
+  })
+
+  test('yields 1 for a NaN current value', () => {
+    const entry = nextLogEntry(Number.NaN, 'pomodoros', now)
+    expect(entry.value).toBe(1)
+  })
+
+  test('yields 1 for an Infinity current value', () => {
+    const entry = nextLogEntry(Number.POSITIVE_INFINITY, 'pomodoros', now)
+    expect(entry.value).toBe(1)
+  })
+
+  test('passes property and recordedAt through unchanged', () => {
+    const entry = nextLogEntry(5, 'streak', now)
+    expect(entry.property).toBe('streak')
+    expect(entry.recordedAt).toBe(now)
   })
 })

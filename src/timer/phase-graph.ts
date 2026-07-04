@@ -76,7 +76,7 @@ const focusPhase: Phase = PhaseSchema.parse({
   label: 'Focus',
   kind: FOCUS_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 25 }),
-  logTarget: 'activeItem',
+  logTarget: { kind: 'activeItem' },
 })
 
 const breakPhase: Phase = PhaseSchema.parse({
@@ -85,7 +85,7 @@ const breakPhase: Phase = PhaseSchema.parse({
   label: 'Short break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 5 }),
-  logTarget: 'dailyNote',
+  logTarget: { kind: 'callback', name: 'dailyNote' },
 })
 
 const longBreakPhase: Phase = PhaseSchema.parse({
@@ -94,7 +94,7 @@ const longBreakPhase: Phase = PhaseSchema.parse({
   label: 'Long break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 15 }),
-  logTarget: 'dailyNote',
+  logTarget: { kind: 'callback', name: 'dailyNote' },
 })
 
 /**

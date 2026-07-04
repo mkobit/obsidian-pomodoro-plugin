@@ -13,3 +13,16 @@ export const LogEntrySchema = z.object({
 }).readonly()
 
 export type LogEntry = z.infer<typeof LogEntrySchema>
+
+/**
+ * Computes the next write-back value for a single-field frontmatter counter:
+ * increments a finite numeric current value, or starts at 1 for anything else
+ * (missing, non-numeric, NaN/Infinity — the latter two rejected by
+ * FileMutationSchema's z.number() downstream, so treated as unusable here too)
+ * — covers a property that's never been written yet.
+ */
+export const nextLogEntry = (currentValue: unknown, property: string, recordedAt: Temporal.Instant): LogEntry => ({
+  property,
+  value: typeof currentValue === 'number' && Number.isFinite(currentValue) ? currentValue + 1 : 1,
+  recordedAt,
+})

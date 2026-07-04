@@ -1,9 +1,12 @@
-import { Plugin, TFile } from 'obsidian'
+import { Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
 import { EngineStore } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { POMODORO_PHASE_GRAPH, FOCUS_PHASE_KIND, findPhaseById } from './timer/phase-graph'
+import { POMODORO_PHASE_GRAPH, findPhaseById } from './timer/phase-graph'
 import { ObsidianFileMutationPort } from './timer/obsidian-file-mutation-port'
+import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
+import { writeBackPhaseCompletion } from './timer/write-back'
+import type { WriteBackDeps } from './timer/write-back'
 import { PomodoroTimerView } from './views/timer-view'
 
 export default class PomodoroPlugin extends Plugin {
@@ -19,6 +22,13 @@ export default class PomodoroPlugin extends Plugin {
     this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port)
     this.ticker = new TimerTicker(action => void this.store.dispatch(action))
 
+    const writeBackDeps: WriteBackDeps = {
+      // No named log-target resolver (e.g. 'dailyNote') is registered yet — see design.md decision 2.
+      logTargetResolverRegistry: { resolve: () => undefined },
+      frontmatterReader: new ObsidianFrontmatterReader(this.app),
+      fileMutationPort: port,
+    }
+
     // Handle background ticker transitions
     let lastState = this.store.getState()
     this.store.subscribe((state) => {
@@ -29,14 +39,20 @@ export default class PomodoroPlugin extends Plugin {
         this.ticker.stop()
       }
 
-      // Write back when a focus-kind phase completes and advances
-      const lastPhase = findPhaseById(this.store.getGraph(), lastState.currentPhaseId)
-      if (
-        lastState.currentPhaseId !== state.currentPhaseId
-        && lastPhase?.kind === FOCUS_PHASE_KIND
-        && state.activeFilePath
-      ) {
-        void this.handlePhaseComplete(state.activeFilePath)
+      if (lastState.currentPhaseId !== state.currentPhaseId) {
+        const lastPhase = findPhaseById(this.store.getGraph(), lastState.currentPhaseId)
+        if (lastPhase) {
+          void writeBackPhaseCompletion(lastPhase, lastState.activeFilePath, this.settings.writeBackProperty, writeBackDeps).then((result) => {
+            if (result.kind === 'applied' && !result.result.success) {
+              // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
+              console.error('Pomodoro write-back failed', result.result)
+            }
+            return undefined
+          }, (cause: unknown) => {
+            // eslint-disable-next-line no-console -- mirrors the applied-but-failed branch above; keeps a resolution/read failure from becoming an unhandled rejection
+            console.error('Pomodoro write-back failed', cause)
+          })
+        }
       }
       lastState = state
     })
@@ -56,23 +72,6 @@ export default class PomodoroPlugin extends Plugin {
     )
 
     this.addSettingTab(new PomodoroSettingTab(this.app, this))
-  }
-
-  private async handlePhaseComplete(filePath: string) {
-    const file = this.app.vault.getAbstractFileByPath(filePath)
-    if (!file || !(file instanceof TFile)) {
-      return
-    }
-    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      const prop = this.settings.writeBackProperty
-      const current = frontmatter[prop]
-      if (typeof current === 'number') {
-        frontmatter[prop] = current + 1
-      }
-      else {
-        frontmatter[prop] = 1
-      }
-    })
   }
 
   onunload() {

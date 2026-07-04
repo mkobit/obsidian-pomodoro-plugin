@@ -8,6 +8,7 @@ import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
 import { writeBackPhaseCompletion } from './timer/write-back'
 import type { WriteBackDeps } from './timer/write-back'
 import { PomodoroTimerView } from './views/timer-view'
+import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 
 export default class PomodoroPlugin extends Plugin {
   public settings: PomodoroSettings = DEFAULT_SETTINGS
@@ -27,6 +28,7 @@ export default class PomodoroPlugin extends Plugin {
       logTargetResolverRegistry: { resolve: () => undefined },
       frontmatterReader: new ObsidianFrontmatterReader(this.app),
       fileMutationPort: port,
+      writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),
     }
 
     // Handle background ticker transitions

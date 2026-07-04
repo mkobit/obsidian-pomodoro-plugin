@@ -4,6 +4,7 @@
 // only when an e2e test demonstrably needs it, with a comment explaining why.
 import 'obsidian'
 import type { App } from 'obsidian'
+import type PomodoroPlugin from '../src/main'
 
 declare global {
   interface Window {
@@ -17,7 +18,12 @@ declare global {
 
 declare module 'obsidian' {
   interface PluginsRegistry {
-    readonly plugins: Record<string, unknown>
+    // Narrowed for our own plugin id only (write-back-modal.e2e.ts dispatches
+    // engine actions directly); every other plugin id still falls back to
+    // `unknown` via the Record intersection.
+    readonly plugins: Record<string, unknown> & {
+      'obsidian-pomodoro-plugin'?: PomodoroPlugin
+    }
   }
 
   interface SettingManager {

@@ -38,6 +38,8 @@ async function waitForCDP(port: number, proc: ChildProcess): Promise<void> {
 
 export type ObsidianPage = {
   readonly page: Page
+  /** Path to the (per-test, `copy: true`) vault actually running — writes here are picked up by the running Obsidian instance. */
+  readonly vaultPath: string
 }
 
 type ObsidianFixtures = {
@@ -49,7 +51,7 @@ export const test = base.extend<ObsidianFixtures>({
     const port = await findFreePort()
     const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
 
-    const { proc } = await launcher.launch({
+    const { proc, vault } = await launcher.launch({
       appVersion: 'latest',
       installerVersion: 'latest',
       vault: VAULT_PATH,
@@ -74,7 +76,7 @@ export const test = base.extend<ObsidianFixtures>({
       { timeout: 30_000 },
     )
 
-    await use({ page })
+    await use({ page, vaultPath: vault ?? VAULT_PATH })
 
     await browser.close()
     proc.kill()

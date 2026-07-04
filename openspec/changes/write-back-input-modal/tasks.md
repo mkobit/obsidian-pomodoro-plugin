@@ -31,11 +31,11 @@
 
 ## 6. Manual verification
 
-- [ ] 6.1 Run the plugin in the dev vault (`scripts/vault-dev.ts` per existing workflow) and manually complete a focus phase: confirm the modal opens pre-filled, submitting with no edits behaves like today's auto-increment, editing fields writes the edited values, and cancelling writes nothing -- left for the user to run by hand (`bun run vault:dev`); not something this agent can drive/observe in a GUI Electron window
+- [x] 6.1 Run the plugin in the dev vault (`scripts/vault-dev.ts` per existing workflow) and manually complete a focus phase: confirm the modal opens pre-filled, submitting with no edits behaves like today's auto-increment, editing fields writes the edited values, and cancelling writes nothing -- confirmed working end to end by the user on 2026-07-04. Along the way found and fixed a pre-existing crash in PomodoroTimerView.render() (flow-zn4, unrelated to this change) that blocked the queue from ever rendering. Also added real e2e coverage (flow-3tj) so this doesn't require manual verification again.
 
 ## 7. Quality gates
 
 - [x] 7.1 `bun test ./tests` passes (92 pass, 0 fail)
 - [x] 7.2 `bun run typecheck` passes
 - [x] 7.3 `bun run lint` passes
-- [ ] 7.4 Close flow-gu1.8 in beads, referencing this change -- deferred until after 6.1 (manual verification) confirms the modal actually works end to end
+- [x] 7.4 Close flow-gu1.8 in beads, referencing this change

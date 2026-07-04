@@ -34,10 +34,10 @@ export interface ObsidianFileMutationPortDeps {
   }
 }
 
-function resolveFile(vault: ObsidianFileMutationPortDeps['vault'], filePath: string): VaultFile {
+export function resolveFile(vault: { getFileByPath(path: string): VaultFile | null }, filePath: string): VaultFile {
   const file = vault.getFileByPath(filePath)
   if (file === null) {
-    throw new Error(`FileMutationPort: no file found at path "${filePath}"`)
+    throw new Error(`resolveFile: no file found at path "${filePath}"`)
   }
   return file
 }

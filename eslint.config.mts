@@ -218,7 +218,7 @@ export default tseslint.config(
           // below covers the ids themselves; types that embed one as a field
           // (and so only reach ReadonlyShallow) are named here explicitly.
           {
-            identifiers: '^(PhaseInstance|Session|TaskQueueItem|Phase|PhaseGraph|PhaseTransition|TransitionCondition|CompletionPolicy|FileMutation|HookReference|HookContext|EngineState|TaskSourceConfig|LogEntry)$',
+            identifiers: '^(PhaseInstance|Session|TaskQueueItem|Phase|PhaseGraph|PhaseTransition|TransitionCondition|PhaseLogTarget|CompletionPolicy|FileMutation|HookReference|HookContext|EngineState|TaskSourceConfig|LogEntry)$',
             immutability: 'ReadonlyShallow',
             comparator: 'AtLeast',
           },

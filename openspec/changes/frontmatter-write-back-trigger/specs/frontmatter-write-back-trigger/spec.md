@@ -52,6 +52,10 @@ On a phase completion, the orchestrator SHALL resolve the completed phase's writ
 - **WHEN** a completed phase has `logTarget: { kind: 'callback', name }` and the registry's resolver for `name` returns a file path for that phase
 - **THEN** the orchestrator reads that file's current frontmatter value, applies a `frontmatter` `FileMutation` computed via `nextLogEntry`, and returns `{ kind: 'applied', result }`
 
+#### Scenario: callback target with a registered resolver that returns null is skipped
+- **WHEN** a completed phase has `logTarget: { kind: 'callback', name }` and the registry's resolver for `name` is registered but returns `null` for that phase
+- **THEN** the orchestrator returns `{ kind: 'skipped' }` without reading any file or calling the `FileMutationPort`
+
 ### Requirement: Write-back triggers on every phase completion, not only focus-kind phases
 The plugin SHALL invoke the write-back orchestrator on every phase transition (i.e. whenever the engine's current phase id changes), regardless of the completed phase's `kind`. Whether a write actually occurs SHALL be determined solely by the completed phase's `logTarget` resolution, not by a phase-kind check.
 

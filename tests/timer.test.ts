@@ -39,9 +39,9 @@ const testGraph: PhaseGraph = PhaseGraphSchema.parse({
   id: 'test',
   name: 'Test graph',
   phases: [
-    PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: 'activeItem' }),
-    PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: 'dailyNote' }),
-    PhaseSchema.parse({ ...phaseDefaults, id: 'long-break', label: 'Long break', kind: 'break', duration: Temporal.Duration.from({ seconds: 900 }), logTarget: 'dailyNote' }),
+    PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: { kind: 'activeItem' } }),
+    PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
+    PhaseSchema.parse({ ...phaseDefaults, id: 'long-break', label: 'Long break', kind: 'break', duration: Temporal.Duration.from({ seconds: 900 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
   ],
   transitions: [
     { fromPhaseId: 'focus', toPhaseId: 'long-break', condition: { kind: 'everyNth', n: 4 } },
@@ -155,8 +155,8 @@ describe('engineReducer', () => {
       id: 'manual-clear',
       name: 'Manual clear graph',
       phases: [
-        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'manualClear' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: 'activeItem' }),
-        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: 'dailyNote' }),
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'manualClear' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
       ],
       transitions: [
         { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
@@ -179,8 +179,8 @@ describe('engineReducer', () => {
       id: 'manual-clear',
       name: 'Manual clear graph',
       phases: [
-        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'manualClear' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: 'activeItem' }),
-        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: 'dailyNote' }),
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'manualClear' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
       ],
       transitions: [
         { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
@@ -203,8 +203,8 @@ describe('engineReducer', () => {
       id: 'test',
       name: 'Test graph',
       phases: [
-        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'noOp' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: 'activeItem' }),
-        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: 'dailyNote' }),
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'noOp' }, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
       ],
       transitions: [
         { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
@@ -231,8 +231,8 @@ describe('engineReducer', () => {
       id: 'test',
       name: 'Test graph',
       phases: [
-        PhaseSchema.parse({ ...phaseDefaults, completionPolicy, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: 'activeItem' }),
-        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: 'dailyNote' }),
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 1500 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
       ],
       transitions: [
         { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
@@ -254,7 +254,7 @@ describe('engineReducer', () => {
       id: 'terminal',
       name: 'Terminal graph',
       phases: [
-        PhaseSchema.parse({ ...phaseDefaults, id: 'only', label: 'Only', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: 'activeItem' }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'only', label: 'Only', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
       ],
       transitions: [],
     })

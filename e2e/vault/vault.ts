@@ -43,3 +43,8 @@ export async function writeNoteToVault(baseDir: string, note: NoteDefinition): P
     return new Error(String(error))
   }
 }
+
+export async function writeVault(baseDir: string, notes: readonly NoteDefinition[]): Promise<readonly Error[]> {
+  const results = await Promise.all(notes.map(note => writeNoteToVault(baseDir, note)))
+  return results.filter((result): result is Error => result instanceof Error)
+}

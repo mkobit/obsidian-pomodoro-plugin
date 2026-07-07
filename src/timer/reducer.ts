@@ -14,6 +14,7 @@ export type EngineAction
     | { type: 'stop' }
     | { type: 'tick' }
     | { type: 'advance-phase' }
+    | { type: 'set-active-file', filePath: string | null }
 
 /**
  * Build the initial stopped state for a given phase graph, at its first
@@ -64,6 +65,10 @@ export function engineReducer(
         : completePhase(state, graph)
     case 'advance-phase':
       return advancePhase(state, graph)
+    case 'set-active-file':
+      return action.filePath === state.activeFilePath
+        ? state
+        : { ...state, activeFilePath: action.filePath }
   }
 }
 

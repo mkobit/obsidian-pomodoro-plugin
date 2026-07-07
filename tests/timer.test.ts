@@ -68,6 +68,25 @@ describe('engineReducer', () => {
     expect(next.activeFilePath).toBe('task.md')
   })
 
+  test('set-active-file updates activeFilePath without touching status', () => {
+    const state: EngineState = { ...initialEngineState(testGraph), status: 'running', activeFilePath: 'task.md' }
+    const next = engineReducer(state, { type: 'set-active-file', filePath: 'other.md' }, testGraph)
+    expect(next.activeFilePath).toBe('other.md')
+    expect(next.status).toBe('running')
+  })
+
+  test('set-active-file is a no-op when the file path is unchanged', () => {
+    const state: EngineState = { ...initialEngineState(testGraph), activeFilePath: 'task.md' }
+    const next = engineReducer(state, { type: 'set-active-file', filePath: 'task.md' }, testGraph)
+    expect(next).toBe(state)
+  })
+
+  test('set-active-file can clear activeFilePath back to null', () => {
+    const state: EngineState = { ...initialEngineState(testGraph), activeFilePath: 'task.md' }
+    const next = engineReducer(state, { type: 'set-active-file', filePath: null }, testGraph)
+    expect(next.activeFilePath).toBeNull()
+  })
+
   test('pause transitions running to paused', () => {
     const state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
     const next = engineReducer(state, { type: 'pause' }, testGraph)

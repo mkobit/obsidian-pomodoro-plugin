@@ -7,6 +7,7 @@ import { findPhaseById, FOCUS_PHASE_KIND, POMODORO_PHASE_GRAPH } from '../timer/
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
+import { resolveActiveFilePath } from '../timer/queue-advance'
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer'
@@ -36,7 +37,17 @@ export class PomodoroTimerView extends BasesView {
   }
 
   onDataUpdated() {
+    this.applyAutoAdvance()
     this.render(this.plugin.store.getState())
+  }
+
+  private applyAutoAdvance(): void {
+    const state = this.plugin.store.getState()
+    const allPaths = (this.data?.data ?? []).map(entry => entry.file.path)
+    const resolved = resolveActiveFilePath(state.activeFilePath, allPaths)
+    if (resolved !== state.activeFilePath) {
+      void this.plugin.store.dispatch({ type: 'set-active-file', filePath: resolved })
+    }
   }
 
   private render(state: EngineState) {

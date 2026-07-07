@@ -94,7 +94,11 @@ export class EngineStore {
 
   /**
    * Switch to a different phase graph and reset to its initial state.
-   * Use when the user selects a different routine in settings.
+   * Unconditional and immediate: resets even if a session is currently
+   * running or paused, discarding its progress with no warning. This store
+   * enforces no guard against that — callers that let a user trigger this
+   * (e.g. PomodoroTimerView's Start handler) must confirm with the user
+   * first whenever a different routine is already in progress.
    */
   public setGraph(graph: PhaseGraph) {
     this.graph = graph

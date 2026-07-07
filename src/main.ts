@@ -69,7 +69,7 @@ export default class PomodoroPlugin extends Plugin {
           containerEl,
           this,
         ),
-        options: () => PomodoroTimerView.getViewOptions(),
+        options: () => PomodoroTimerView.getViewOptions(this.app),
       },
     )
 

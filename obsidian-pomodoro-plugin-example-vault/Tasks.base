@@ -11,3 +11,6 @@ views:
     name: Table
   - type: pomodoro-timer
     name: Pomodoro
+  - type: pomodoro-timer
+    name: Standup
+    routineFile: routines/standup-routine.md

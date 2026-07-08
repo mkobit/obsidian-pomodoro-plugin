@@ -3,6 +3,7 @@ import { PhaseKindSchema, PhaseSchema } from '../domain/phase/phase'
 import type { Phase, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'
 import type { PhaseGraph, TransitionCondition } from '../domain/phase/phase-graph'
+import { WRITE_BACK_HOOK_NAME } from './write-back'
 
 /** Built-in phase kinds used by the default Pomodoro phase graph. */
 export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
@@ -65,7 +66,7 @@ const phaseDefaults = {
   completionPolicy: null,
   notification: null,
   onEnter: null,
-  onComplete: null,
+  onComplete: { name: WRITE_BACK_HOOK_NAME, params: {} },
   onSkip: null,
   onExit: null,
 } as const

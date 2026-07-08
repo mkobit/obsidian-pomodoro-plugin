@@ -4,6 +4,8 @@ import { EngineStore } from '../src/timer/store'
 import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseIdSchema, PhaseSchema } from '../src/domain/phase/phase'
+import { POMODORO_PHASE_GRAPH } from '../src/timer/phase-graph'
+import { WRITE_BACK_HOOK_NAME } from '../src/timer/write-back'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -123,5 +125,13 @@ describe('EngineStore', () => {
     store.setGraph(buildGraph('b'))
 
     expect(counter.count()).toBe(1)
+  })
+})
+
+describe('POMODORO_PHASE_GRAPH write-back wiring', () => {
+  test('every phase declares onComplete naming the write-back hook', () => {
+    for (const phase of POMODORO_PHASE_GRAPH.phases) {
+      expect(phase.onComplete).toEqual({ name: WRITE_BACK_HOOK_NAME, params: {} })
+    }
   })
 })

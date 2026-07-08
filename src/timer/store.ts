@@ -85,7 +85,7 @@ export class EngineStore {
       if (hook === undefined) {
         continue
       }
-      const mutations = hook(synthesizeHookContext(phase, event, nextState))
+      const mutations = await hook(synthesizeHookContext(phase, event, nextState))
       const result = await applyMutations(port, mutations)
       applications = [...applications, { event, phase, result }]
     }

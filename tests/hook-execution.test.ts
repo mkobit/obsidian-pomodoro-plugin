@@ -119,11 +119,11 @@ describe('EngineStore hook firing', () => {
   test('advance-phase from stopped fires onExit then onEnter, no onComplete/onSkip', async () => {
     const tracker = createCallTracker()
     const registry = createFakeRegistry({
-      exit: () => {
+      exit: async () => {
         tracker.record('onExit')
         return []
       },
-      enter: () => {
+      enter: async () => {
         tracker.record('onEnter')
         return []
       },
@@ -140,11 +140,11 @@ describe('EngineStore hook firing', () => {
   test('manualClear halt fires onComplete only', async () => {
     const tracker = createCallTracker()
     const registry = createFakeRegistry({
-      complete: () => {
+      complete: async () => {
         tracker.record('onComplete')
         return []
       },
-      exit: () => {
+      exit: async () => {
         tracker.record('onExit')
         return []
       },
@@ -171,15 +171,15 @@ describe('EngineStore hook firing', () => {
   test('null-policy auto-advance fires onComplete, then onExit, then onEnter', async () => {
     const tracker = createCallTracker()
     const registry = createFakeRegistry({
-      complete: () => {
+      complete: async () => {
         tracker.record('onComplete')
         return []
       },
-      exit: () => {
+      exit: async () => {
         tracker.record('onExit')
         return []
       },
-      enter: () => {
+      enter: async () => {
         tracker.record('onEnter')
         return []
       },
@@ -202,19 +202,19 @@ describe('EngineStore hook firing', () => {
   test('clearing a completed manualClear phase fires onExit/onEnter only, not onComplete or onSkip', async () => {
     const tracker = createCallTracker()
     const registry = createFakeRegistry({
-      complete: () => {
+      complete: async () => {
         tracker.record('onComplete')
         return []
       },
-      skip: () => {
+      skip: async () => {
         tracker.record('onSkip')
         return []
       },
-      exit: () => {
+      exit: async () => {
         tracker.record('onExit')
         return []
       },
-      enter: () => {
+      enter: async () => {
         tracker.record('onEnter')
         return []
       },
@@ -246,15 +246,15 @@ describe('EngineStore hook firing', () => {
     async (status) => {
       const tracker = createCallTracker()
       const registry = createFakeRegistry({
-        skip: () => {
+        skip: async () => {
           tracker.record('onSkip')
           return []
         },
-        exit: () => {
+        exit: async () => {
           tracker.record('onExit')
           return []
         },
-        enter: () => {
+        enter: async () => {
           tracker.record('onEnter')
           return []
         },
@@ -302,7 +302,7 @@ describe('EngineStore hook firing', () => {
   })
 
   test('a declared and resolvable hook is invoked exactly once with the firing phase', async () => {
-    const hookSpy = mock((_context: HookContext): readonly FileMutation[] => [])
+    const hookSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
     const registry = createFakeRegistry({ enter: hookSpy })
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
     const store = new EngineStore(graph, registry, createFakePort())
@@ -325,7 +325,7 @@ describe('EngineStore hook firing', () => {
   })
 
   test('an unregistered hook name does not throw and does not block a sibling event', async () => {
-    const enterSpy = mock((_context: HookContext): readonly FileMutation[] => [])
+    const enterSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
     const registry = createFakeRegistry({ enter: enterSpy })
     const graph = buildGraph({
       focus: { onExit: hookRef('missing') },
@@ -340,7 +340,7 @@ describe('EngineStore hook firing', () => {
   })
 
   test('a hook\'s returned mutations are applied via the configured FileMutationPort', async () => {
-    const registry = createFakeRegistry({ enter: () => [appendMutation] })
+    const registry = createFakeRegistry({ enter: async () => [appendMutation] })
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
     const port = createFakePort()
     const store = new EngineStore(graph, registry, port)
@@ -351,10 +351,47 @@ describe('EngineStore hook firing', () => {
     expect(port.appendText).toHaveBeenCalledWith(appendMutation)
   })
 
-  test('a failing onExit mutation does not suppress the paired onEnter hook', async () => {
-    const enterSpy = mock((_context: HookContext): readonly FileMutation[] => [])
+  test('EngineStore awaits an interactive hook before applying its mutations or invoking a later event\'s hook', async () => {
+    const tracker = createCallTracker()
+    let resolveExit: (mutations: readonly FileMutation[]) => void = () => {}
+    const exitPromise = new Promise<readonly FileMutation[]>((resolve) => {
+      resolveExit = resolve
+    })
     const registry = createFakeRegistry({
-      exit: () => [appendMutation],
+      exit: () => {
+        tracker.record('onExit:invoked')
+        return exitPromise
+      },
+      enter: async () => {
+        tracker.record('onEnter:invoked')
+        return []
+      },
+    })
+    const graph = buildGraph({
+      focus: { onExit: hookRef('exit') },
+      break: { onEnter: hookRef('enter') },
+    })
+    const port = createFakePort()
+    const store = new EngineStore(graph, registry, port)
+
+    const dispatchPromise = store.dispatch({ type: 'advance-phase' })
+    await Promise.resolve() // let the dispatch loop reach and suspend at `await hook(...)`
+
+    expect(tracker.calls()).toEqual(['onExit:invoked'])
+    expect(port.appendText).not.toHaveBeenCalled()
+
+    resolveExit([appendMutation])
+    const applications = await dispatchPromise
+
+    expect(tracker.calls()).toEqual(['onExit:invoked', 'onEnter:invoked'])
+    expect(port.appendText).toHaveBeenCalledTimes(1)
+    expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
+  })
+
+  test('a failing onExit mutation does not suppress the paired onEnter hook', async () => {
+    const enterSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
+    const registry = createFakeRegistry({
+      exit: async () => [appendMutation],
       enter: enterSpy,
     })
     const graph = buildGraph({
@@ -386,8 +423,8 @@ describe('EngineStore hook firing', () => {
 
   test('dispatch resolves with per-event results and does not reject on a hook failure', async () => {
     const registry = createFakeRegistry({
-      exit: () => [appendMutation],
-      enter: () => [appendMutation],
+      exit: async () => [appendMutation],
+      enter: async () => [appendMutation],
     })
     const graph = buildGraph({
       focus: { onExit: hookRef('exit') },

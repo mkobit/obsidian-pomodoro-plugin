@@ -175,7 +175,7 @@ export function synthesizeHookContext(
     history: [],
   }
 
-  return { phase, instance, session }
+  return { phase, instance, session, activeFilePath: nextState.activeFilePath }
 }
 
 /**

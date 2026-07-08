@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Write-back orchestration resolves a target, then reads, computes, prompts, and applies a single frontmatter mutation
+### Requirement: Write-back orchestration resolves a target, then reads, computes, and applies a single frontmatter mutation
 On a phase completion, the orchestrator SHALL resolve the completed phase's write-back target from its `logTarget`: for `{ kind: 'activeItem' }`, the target is the engine's current `activeFilePath` (or no target if it is `null`); for `{ kind: 'callback', name }`, the target is whatever the resolved function (if any) returns for that `name`, given the phase. When a target file path is resolved, the orchestrator SHALL read the file's current value at the configured write-back property, compute the next `LogEntry` via `nextLogEntry`, and prompt the user (via `WriteBackPromptPort`) with those computed values as defaults. If the user submits the prompt, the orchestrator SHALL build a `FileMutation` of kind `frontmatter` from the (possibly user-edited) submitted values and apply it via the given `FileMutationPort`. The orchestrator SHALL return `{ kind: 'skipped' }` when no target resolves or the user cancels the prompt, or `{ kind: 'applied', result }` (the `ApplyMutationsResult` from applying the mutation) when the user submits.
 
 #### Scenario: activeItem target with an active file prompts and writes back on submit

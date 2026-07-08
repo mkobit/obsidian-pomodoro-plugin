@@ -49,7 +49,7 @@ export interface TaskSourceConfig {
  * Extension point: abstraction over where a phase's items come from.
  * Optional per-Phase, not core to Phase — several use cases (stretch
  * routine, standup) have no queue at all. A real Bases-backed implementation
- * is deferred to flow-gu1.9.
+ * is deferred to flow-djx.
  */
 export interface TaskSource {
   readonly getQueue: () => readonly TaskQueueItem[]

@@ -45,7 +45,7 @@ export function resolveFile(vault: { getFileByPath(path: string): VaultFile | nu
 const notYetSupported = (kind: Extract<FileMutation, { kind: 'queueReorder' | 'queueStatusChange' }>['kind']): Promise<void> =>
   Promise.reject(new Error(
     `FileMutationPort: "${kind}" mutations are not yet supported — there is no TaskSource/queue runtime `
-    + 'to resolve a TaskQueueItemId to a vault file yet (see flow-gu1.9).',
+    + 'to resolve a TaskQueueItemId to a vault file yet (see flow-djx).',
   ))
 
 /**

@@ -9,7 +9,7 @@ Repeats until the user stops the session.
 ## Domain mapping
 
 This is the plugin's actual shipped default graph — `POMODORO_PHASE_GRAPH` in `src/timer/phase-graph.ts:104`.
-It has no task queue attached: `taskSourceId` is `null` on every phase (Bases-backed `TaskSource` wiring is deferred to flow-gu1.9), and `completionPolicy` is `null` on every phase.
+It has no task queue attached: `taskSourceId` is `null` on every phase (Bases-backed `TaskSource` wiring is deferred to flow-djx), and `completionPolicy` is `null` on every phase.
 
 | Phase | id | kind | duration | taskSourceId | completionPolicy | logTarget | hooks |
 |---|---|---|---|---|---|---|---|

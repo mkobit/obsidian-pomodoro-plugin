@@ -157,7 +157,7 @@ export function synthesizeHookContext(
     startedAt: now,
     endedAt: event === 'onEnter' ? null : now,
     endReason,
-    // No TaskSource/TaskQueueItem runtime integration yet (flow-gu1.9).
+    // No TaskSource/TaskQueueItem runtime integration yet (flow-djx).
     activeItem: null,
     itemsTouched: [],
     // This call's own mutations are its return value, not known yet while its context is being built.

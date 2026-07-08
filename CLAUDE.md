@@ -26,29 +26,36 @@ bd close <id>         # Complete work
 
 ## Session Completion
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until it's merged into `main` on the remote.
+
+**`main` is branch-protected** — GitHub rejects direct pushes to it ("Changes must be made through a pull request"). Code/doc changes MUST go through a branch + PR, not `git push` to main directly. `bd dolt push` is unaffected — it targets a separate ref (`refs/dolt/data`), not `main`, so push it directly as usual.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+4. **PUBLISH TO REMOTE** - This is MANDATORY:
    ```bash
-   git pull --rebase
-   bd dolt push
-   git push
+   bd dolt push                                    # beads data — direct push is fine, separate ref
+   git checkout -b <branch-name>                   # if not already on a feature branch
+   git push -u origin <branch-name>
+   gh pr create --title "..." --body "..."
+   gh pr checks <pr-number> --watch --fail-fast     # wait for CI, don't sleep-poll manually
+   gh pr merge <pr-number> --squash --delete-branch
+   git checkout main && git pull
    git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
+5. **Clean up** - Clear stashes, prune remote branches, delete merged local branches
+6. **Verify** - All changes committed AND merged into main on the remote
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- Work is NOT complete until the PR is merged into `main` on the remote
+- NEVER stop before merging - that leaves work stranded on a branch or local-only
+- NEVER say "ready to merge when you are" - YOU must open, watch, and merge the PR
+- A rejected direct push to main is expected, not an error to force past — open a PR instead
+- If a CI check fails, investigate before retrying; a bare re-run is only appropriate for a check already known to be flaky (e.g. flow-gu1.18)
 <!-- END BEADS INTEGRATION -->
 
 

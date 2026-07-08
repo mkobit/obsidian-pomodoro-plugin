@@ -39,4 +39,4 @@ Transitions: `warmup` → `set` (`always`), `set` → `rest` (`always`), `rest` 
 - "Loop until the exercise sequence is exhausted" isn't expressible as a `TransitionCondition` today.
   `always`/`everyNth`/`custom` are all keyed off visit counts or an unresolvable predicate — none of them can ask "does the attached `TaskSource` have any items left?"
   Ending the workout currently has to be a manual `stop`, not a graph-driven transition.
-- `fixedSequence` is one of three `TaskSourceKind` values, but the `TaskSource` interface (`getQueue(): readonly TaskQueueItem[]`) has no real implementation yet for any kind — deferred to flow-gu1.9.
+- `fixedSequence` is one of three `TaskSourceKind` values, but the `TaskSource` interface (`getQueue(): readonly TaskQueueItem[]`) has no real implementation yet for any kind — deferred to flow-djx.

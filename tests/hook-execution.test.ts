@@ -199,6 +199,65 @@ describe('EngineStore hook firing', () => {
     expect(applications.map(a => a.event)).toEqual(['onComplete', 'onExit', 'onEnter'])
   })
 
+  test('finish-phase on a manualClear phase fires onComplete only', async () => {
+    const tracker = createCallTracker()
+    const registry = createFakeRegistry({
+      complete: async () => {
+        tracker.record('onComplete')
+        return []
+      },
+      exit: async () => {
+        tracker.record('onExit')
+        return []
+      },
+    })
+    const graph = buildGraph({
+      focus: {
+        completionPolicy: { kind: 'manualClear' },
+        onComplete: hookRef('complete'),
+        onExit: hookRef('exit'),
+      },
+    })
+    const store = new EngineStore(graph, registry, createFakePort())
+    await store.dispatch({ type: 'start' })
+    tracker.reset()
+
+    const applications = await store.dispatch({ type: 'finish-phase' })
+
+    expect(tracker.calls()).toEqual(['onComplete'])
+    expect(applications.map(a => a.event)).toEqual(['onComplete'])
+  })
+
+  test('finish-phase on a null-policy phase fires onComplete, then onExit, then onEnter', async () => {
+    const tracker = createCallTracker()
+    const registry = createFakeRegistry({
+      complete: async () => {
+        tracker.record('onComplete')
+        return []
+      },
+      exit: async () => {
+        tracker.record('onExit')
+        return []
+      },
+      enter: async () => {
+        tracker.record('onEnter')
+        return []
+      },
+    })
+    const graph = buildGraph({
+      focus: { onComplete: hookRef('complete'), onExit: hookRef('exit') },
+      break: { onEnter: hookRef('enter') },
+    })
+    const store = new EngineStore(graph, registry, createFakePort())
+    await store.dispatch({ type: 'start' })
+    tracker.reset()
+
+    const applications = await store.dispatch({ type: 'finish-phase' })
+
+    expect(tracker.calls()).toEqual(['onComplete', 'onExit', 'onEnter'])
+    expect(applications.map(a => a.event)).toEqual(['onComplete', 'onExit', 'onEnter'])
+  })
+
   test('clearing a completed manualClear phase fires onExit/onEnter only, not onComplete or onSkip', async () => {
     const tracker = createCallTracker()
     const registry = createFakeRegistry({

@@ -76,7 +76,7 @@ export class PomodoroTimerView extends BasesView {
 
     const graph = this.plugin.store.getGraph()
     const phase = findPhaseById(graph, state.currentPhaseId)
-    if (!phase || state.remaining === null) {
+    if (!phase) {
       return
     }
 
@@ -84,10 +84,15 @@ export class PomodoroTimerView extends BasesView {
 
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'pomodoro-timer-panel' })
-    const totalSeconds = state.remaining.total({ unit: 'seconds' })
-    const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
-    const secs = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
-    timerPanel.createEl('h2', { text: `${phase.label}: ${mins}:${secs} (${state.status})` })
+    const headerText = state.remaining === null
+      ? `${phase.label} (${state.status})`
+      : (() => {
+          const totalSeconds = state.remaining.total({ unit: 'seconds' })
+          const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+          const secs = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
+          return `${phase.label}: ${mins}:${secs} (${state.status})`
+        })()
+    timerPanel.createEl('h2', { text: headerText })
 
     if (!isViewRoutineActive && state.status !== 'stopped') {
       timerPanel.createEl('p', { text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").`, cls: 'pomodoro-routine-inert' })
@@ -103,6 +108,11 @@ export class PomodoroTimerView extends BasesView {
     else {
       const playBtn = controls.createEl('button', { text: 'Start' })
       playBtn.addEventListener('click', () => void this.handleStart(viewGraph))
+    }
+
+    if (isViewRoutineActive && state.status === 'running' && state.remaining === null) {
+      const doneBtn = controls.createEl('button', { text: 'Done' })
+      doneBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'finish-phase' }))
     }
 
     const stopBtn = controls.createEl('button', { text: 'Reset' })

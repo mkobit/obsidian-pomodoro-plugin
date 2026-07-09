@@ -14,3 +14,6 @@ views:
   - type: pomodoro-timer
     name: Standup
     routineFile: routines/standup-routine.md
+  - type: pomodoro-timer
+    name: Workout
+    routineFile: routines/workout-routine.md

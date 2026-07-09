@@ -51,7 +51,7 @@ When `advance-phase` is dispatched against a `'running'` or `'paused'` state (a 
 - **THEN** `EngineStore` fires no `onEnter`, `onComplete`, `onSkip`, or `onExit` event
 
 ### Requirement: Resolved hooks are invoked with a synthesized HookContext
-For each fired event whose phase declares a non-null `HookReference` for that event, `EngineStore` SHALL resolve the hook via the configured `HookRegistry` and, if resolution succeeds, invoke it with a `HookContext` whose `phase` is the firing phase and whose `instance`/`session` are freshly constructed for that call (not read from persisted state).
+For each fired event whose phase declares a non-null `HookReference` for that event, `EngineStore` SHALL resolve the hook via the configured `HookRegistry` and, if resolution succeeds, invoke it with a `HookContext` whose `phase` is the firing phase, whose `activeFilePath` is the engine state's current `activeFilePath` at the moment the event fired, and whose `instance`/`session` are freshly constructed for that call (not read from persisted state).
 
 #### Scenario: A declared and resolvable hook is invoked
 - **WHEN** an `onEnter` event fires for a phase whose `onEnter` field is a `HookReference` naming a hook registered in the configured `HookRegistry`
@@ -61,6 +61,10 @@ For each fired event whose phase declares a non-null `HookReference` for that ev
 - **WHEN** an `onExit` event fires for a phase whose `onExit` field is `null`
 - **THEN** `EngineStore` does not call `HookRegistry.resolve` or any hook for that event
 
+#### Scenario: HookContext carries the engine's current active file path
+- **WHEN** a hook is invoked for an event fired while `EngineState.activeFilePath` is a non-null file path
+- **THEN** the `HookContext` passed to that hook has `activeFilePath` equal to that same file path
+
 ### Requirement: An unresolved hook name is silently skipped
 When a fired event's phase declares a `HookReference` whose `name` does not resolve via the configured `HookRegistry` (`resolve` returns `undefined`), `EngineStore` SHALL skip invoking a hook for that event without throwing and without blocking any other fired event in the same dispatch.
 
@@ -69,11 +73,15 @@ When a fired event's phase declares a `HookReference` whose `name` does not reso
 - **THEN** `EngineStore.dispatch` does not throw, and the `onExit` event's hook is still invoked
 
 ### Requirement: Hook-produced FileMutations are applied via the configured FileMutationPort
-When an invoked hook returns a non-empty `FileMutation[]`, `EngineStore` SHALL apply them via `applyMutations` against the configured `FileMutationPort`.
+`Hook` SHALL be invoked as a function returning `Promise<readonly FileMutation[]>`. `EngineStore` SHALL `await` that promise before applying the resolved `FileMutation[]`; when the awaited result is non-empty, `EngineStore` SHALL apply them via `applyMutations` against the configured `FileMutationPort`.
 
 #### Scenario: A hook's returned mutations are applied
-- **WHEN** a resolved hook is invoked and returns one or more `FileMutation`s
+- **WHEN** a resolved hook is invoked and its returned promise resolves with one or more `FileMutation`s
 - **THEN** `EngineStore` calls `applyMutations` with the configured `FileMutationPort` and that mutation list
+
+#### Scenario: EngineStore awaits an interactive hook before proceeding
+- **WHEN** a resolved hook's body awaits a user-facing prompt before its returned promise resolves
+- **THEN** `EngineStore` does not call `applyMutations` for that event until the hook's promise resolves, and does not skip or reorder later events ahead of it in the same dispatch
 
 ### Requirement: A failed mutation application does not stop remaining hook events from firing
 When `applyMutations` resolves with `{ success: false }` for one fired event's hook, `EngineStore` SHALL continue resolving and invoking hooks for any other events fired in the same dispatch.

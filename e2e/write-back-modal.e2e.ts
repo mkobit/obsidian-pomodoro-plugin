@@ -16,6 +16,28 @@ function dispatchAction(page: Page, action: EngineAction): Promise<unknown> {
     app.plugins.plugins[args.pluginId]!.store.dispatch(args.action), { pluginId: PLUGIN_ID, action })
 }
 
+/**
+ * Drives the running focus phase to a real completion (onComplete), which is
+ * what the write-back hook is bound to post-migration -- dispatching
+ * 'advance-phase' instead fires onSkip, which doesn't trigger write-back.
+ * Ticks are simulated dispatches, not wall-clock waits, so looping through a
+ * 25-minute duration resolves near-instantly. The final tick (the one that
+ * actually crosses zero) is intentionally not awaited: its dispatch fires the
+ * write-back hook, whose returned promise doesn't resolve until this test
+ * dismisses the modal, so awaiting it here would deadlock the test against
+ * itself.
+ */
+async function completeFocusPhase(page: Page): Promise<void> {
+  await evaluateObsidian(page, async (app, args: { pluginId: typeof PLUGIN_ID }) => {
+    const store = app.plugins.plugins[args.pluginId]!.store
+    const remainingSeconds = store.getState().remaining?.total({ unit: 'seconds' }) ?? 0
+    for (let i = 0; i < remainingSeconds; i += 1) {
+      await store.dispatch({ type: 'tick' })
+    }
+  }, { pluginId: PLUGIN_ID })
+  void dispatchAction(page, { type: 'tick' })
+}
+
 function readPomodoros(page: Page): Promise<unknown> {
   return evaluateObsidian(page, (app, args: { path: string }) => {
     const file = app.vault.getFileByPath(args.path)
@@ -39,7 +61,7 @@ test.describe('write-back confirmation modal', () => {
   })
 
   test('submitting with no edits increments the value', async ({ obsidianPage: { page } }) => {
-    await dispatchAction(page, { type: 'advance-phase' })
+    await completeFocusPhase(page)
 
     await modalLocator(page).getByRole('button', { name: 'Submit' }).click()
 
@@ -47,7 +69,7 @@ test.describe('write-back confirmation modal', () => {
   })
 
   test('cancelling the prompt writes nothing', async ({ obsidianPage: { page } }) => {
-    await dispatchAction(page, { type: 'advance-phase' })
+    await completeFocusPhase(page)
 
     await modalLocator(page).getByRole('button', { name: 'Cancel' }).click()
 
@@ -55,7 +77,7 @@ test.describe('write-back confirmation modal', () => {
   })
 
   test('editing the value field before submit writes the edited value', async ({ obsidianPage: { page } }) => {
-    await dispatchAction(page, { type: 'advance-phase' })
+    await completeFocusPhase(page)
     const modal = modalLocator(page)
 
     await modal.locator('.setting-item', { hasText: 'Value' }).locator('input').fill('99')

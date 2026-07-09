@@ -15,14 +15,22 @@ export interface HookContext {
   readonly phase: Phase
   readonly instance: PhaseInstance
   readonly session: Session
+  /**
+   * The engine's current active file path. Distinct from
+   * `instance.activeItem` (a richer TaskQueueItem, reserved for flow-djx's
+   * TaskSource runtime integration and hardcoded null until then).
+   */
+  readonly activeFilePath: string | null
 }
 
 /**
  * A hook is pure(ish): given context, it returns the FileMutation intents it
  * wants applied, rather than mutating the vault directly. Keeps hooks
  * testable and gives the engine a single choke point for applying them.
+ * Always Promise-returning — some hooks (e.g. write-back) must await an
+ * interactive prompt before they know what, if anything, to return.
  */
-export type Hook = (context: HookContext) => readonly FileMutation[]
+export type Hook = (context: HookContext) => Promise<readonly FileMutation[]>
 
 /** Resolves a hook by name. Never eval's from settings/frontmatter. */
 export interface HookRegistry {

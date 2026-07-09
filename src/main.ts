@@ -1,14 +1,25 @@
 import { Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
 import { EngineStore } from './timer/store'
+import type { HookEventApplication } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { POMODORO_PHASE_GRAPH, findPhaseById } from './timer/phase-graph'
+import { POMODORO_PHASE_GRAPH } from './timer/phase-graph'
 import { ObsidianFileMutationPort } from './timer/obsidian-file-mutation-port'
 import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
-import { writeBackPhaseCompletion } from './timer/write-back'
-import type { WriteBackDeps } from './timer/write-back'
+import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
+import type { HookRegistry } from './domain/hook/hook'
 import { PomodoroTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
+
+/** Surfaces a dispatched hook's failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
+function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
+  for (const application of applications) {
+    if (!application.result.success) {
+      // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
+      console.error('Pomodoro write-back failed', application.result)
+    }
+  }
+}
 
 export default class PomodoroPlugin extends Plugin {
   public settings: PomodoroSettings = DEFAULT_SETTINGS
@@ -18,21 +29,26 @@ export default class PomodoroPlugin extends Plugin {
   async onload() {
     await this.loadSettings()
     const port = new ObsidianFileMutationPort(this.app)
-    // No phase currently sets onEnter/onComplete/onSkip/onExit, so there's nothing to resolve yet.
-    const hookRegistry = { resolve: () => undefined }
-    this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port)
-    this.ticker = new TimerTicker(action => void this.store.dispatch(action))
 
-    const writeBackDeps: WriteBackDeps = {
+    const writeBackHook = createWriteBackHook({
       // No named log-target resolver (e.g. 'dailyNote') is registered yet — see design.md decision 2.
       logTargetResolverRegistry: { resolve: () => undefined },
       frontmatterReader: new ObsidianFrontmatterReader(this.app),
-      fileMutationPort: port,
       writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),
+      getWriteBackProperty: () => this.settings.writeBackProperty,
+    })
+    const hookRegistry: HookRegistry = {
+      resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : undefined,
     }
+    this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port)
+    this.ticker = new TimerTicker((action) => {
+      void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
+        // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
+        console.error('Pomodoro hook dispatch failed', cause)
+      })
+    })
 
     // Handle background ticker transitions
-    let lastState = this.store.getState()
     this.store.subscribe((state) => {
       if (state.status === 'running') {
         this.ticker.start()
@@ -40,23 +56,6 @@ export default class PomodoroPlugin extends Plugin {
       else {
         this.ticker.stop()
       }
-
-      if (lastState.currentPhaseId !== state.currentPhaseId) {
-        const lastPhase = findPhaseById(this.store.getGraph(), lastState.currentPhaseId)
-        if (lastPhase) {
-          void writeBackPhaseCompletion(lastPhase, lastState.activeFilePath, this.settings.writeBackProperty, writeBackDeps).then((result) => {
-            if (result.kind === 'applied' && !result.result.success) {
-              // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
-              console.error('Pomodoro write-back failed', result.result)
-            }
-            return undefined
-          }, (cause: unknown) => {
-            // eslint-disable-next-line no-console -- mirrors the applied-but-failed branch above; keeps a resolution/read failure from becoming an unhandled rejection
-            console.error('Pomodoro write-back failed', cause)
-          })
-        }
-      }
-      lastState = state
     })
 
     this.registerBasesView(

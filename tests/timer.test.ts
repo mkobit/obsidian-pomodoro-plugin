@@ -268,6 +268,71 @@ describe('engineReducer', () => {
     )
   })
 
+  test('finish-phase halts at status "completed" for a manualClear phase, without advancing', () => {
+    const manualClearGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'manual-clear',
+      name: 'Manual clear graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy: { kind: 'manualClear' }, id: 'focus', label: 'Focus', kind: 'focus', duration: null, logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+        { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+      ],
+    })
+    const state: EngineState = { ...initialEngineState(manualClearGraph), status: 'running' }
+    const next = engineReducer(state, { type: 'finish-phase' }, manualClearGraph)
+    expect(next.status).toBe('completed')
+    expect(next.currentPhaseId).toBe(focusId)
+    expect(next.remaining).toBeNull()
+  })
+
+  test('finish-phase advances a null-policy duration-less phase to the next phase', () => {
+    const state: EngineState = {
+      ...initialEngineState(testGraph),
+      status: 'running',
+      remaining: null,
+    }
+    const next = engineReducer(state, { type: 'finish-phase' }, testGraph)
+    expect(next.status).toBe('stopped')
+    expect(next.currentPhaseId).toBe(breakId)
+    expect(next.remaining?.total({ unit: 'seconds' })).toBe(300)
+  })
+
+  test('finish-phase completes a phase even when remaining is non-null, not gated on duration-less state', () => {
+    const state: EngineState = {
+      ...initialEngineState(testGraph),
+      status: 'running',
+      remaining: Temporal.Duration.from({ seconds: 42 }),
+    }
+    const next = engineReducer(state, { type: 'finish-phase' }, testGraph)
+    expect(next.status).toBe('stopped')
+    expect(next.currentPhaseId).toBe(breakId)
+  })
+
+  test.each([
+    ['queueCycle', { kind: 'queueCycle' } as const],
+    ['futureDate', { kind: 'futureDate', after: Temporal.Duration.from({ days: 1 }) } as const],
+  ])('finish-phase throws for the not-yet-implemented %s completion policy', (_name, completionPolicy) => {
+    const unimplementedGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'test',
+      name: 'Test graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, completionPolicy, id: 'focus', label: 'Focus', kind: 'focus', duration: null, logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 300 }), logTarget: { kind: 'callback', name: 'dailyNote' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+        { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+      ],
+    })
+    const state: EngineState = { ...initialEngineState(unimplementedGraph), status: 'running' }
+    expect(() => engineReducer(state, { type: 'finish-phase' }, unimplementedGraph)).toThrow(
+      `Phase "focus" has completionPolicy "${completionPolicy.kind}", which the engine doesn't execute yet.`,
+    )
+  })
+
   test('advance-phase throws when no transition is eligible from the current phase', () => {
     const terminalGraph: PhaseGraph = PhaseGraphSchema.parse({
       id: 'terminal',

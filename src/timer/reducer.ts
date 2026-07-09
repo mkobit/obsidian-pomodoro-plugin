@@ -14,6 +14,7 @@ export type EngineAction
     | { type: 'resume' }
     | { type: 'stop' }
     | { type: 'tick' }
+    | { type: 'finish-phase' }
     | { type: 'advance-phase' }
     | { type: 'set-active-file', filePath: string | null }
 
@@ -65,6 +66,8 @@ export function engineReducer(
       return state.remaining.sign > 0
         ? { ...state, remaining: state.remaining.subtract({ seconds: 1 }) }
         : completePhase(state, graph, predicateRegistry)
+    case 'finish-phase':
+      return completePhase(state, graph, predicateRegistry)
     case 'advance-phase':
       return advancePhase(state, graph, predicateRegistry)
     case 'set-active-file':
@@ -95,7 +98,8 @@ export function deriveHookEvents(
 ): readonly HookEventOccurrence[] {
   const prevPhase = requirePhaseById(graph, prevState.currentPhaseId)
 
-  if (action.type === 'tick') {
+  // finish-phase reaches completePhase the same way a zero-remaining tick does, so it derives identically.
+  if (action.type === 'tick' || action.type === 'finish-phase') {
     if (nextState.status === 'completed' && prevState.status !== 'completed') {
       return [{ event: 'onComplete', phase: prevPhase }]
     }

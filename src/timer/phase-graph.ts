@@ -3,6 +3,7 @@ import { PhaseKindSchema, PhaseSchema } from '../domain/phase/phase'
 import type { Phase, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'
 import type { PhaseGraph, TransitionCondition } from '../domain/phase/phase-graph'
+import type { PredicateRegistry } from '../domain/hook/predicate'
 import { WRITE_BACK_HOOK_NAME } from './write-back'
 
 /** Built-in phase kinds used by the default Pomodoro phase graph. */
@@ -21,22 +22,24 @@ export function findPhaseById(graph: PhaseGraph, id: PhaseId): Phase | undefined
 /**
  * Resolve which phase to enter next from `fromPhaseId`, evaluating
  * transitions in declared array order and taking the first whose condition
- * is satisfied — so a graph author puts exception branches (e.g. everyNth)
- * before the fallback 'always' branch.
+ * is satisfied — so a graph author puts exception branches (e.g. everyNth,
+ * custom) before the fallback 'always' branch.
  *
- * Throws if no outgoing transition matches (a misconfigured graph) or if a
- * 'custom' condition is reached — custom predicates aren't resolvable yet,
- * since HookRegistry only resolves to Hooks that return FileMutation[], not
- * boolean-returning predicates (see the follow-up bead for this gap).
+ * Throws if no outgoing transition matches (a misconfigured graph). A
+ * 'custom' condition whose predicate doesn't resolve via `predicateRegistry`
+ * (or when no registry is supplied at all) is treated as not satisfied,
+ * matching Hook's "unresolved name => no-op" precedent, rather than
+ * throwing.
  */
 export function resolveNextPhaseId(
   graph: PhaseGraph,
   fromPhaseId: PhaseId,
   visitCounts: Readonly<Record<PhaseId, number>>,
+  predicateRegistry?: PredicateRegistry,
 ): PhaseId {
   const candidates = graph.transitions.filter(transition => transition.fromPhaseId === fromPhaseId)
   for (const transition of candidates) {
-    if (isConditionSatisfied(transition.condition, fromPhaseId, visitCounts)) {
+    if (isConditionSatisfied(transition.condition, fromPhaseId, visitCounts, predicateRegistry)) {
       return transition.toPhaseId
     }
   }
@@ -47,17 +50,17 @@ function isConditionSatisfied(
   condition: TransitionCondition,
   fromPhaseId: PhaseId,
   visitCounts: Readonly<Record<PhaseId, number>>,
+  predicateRegistry: PredicateRegistry | undefined,
 ): boolean {
   switch (condition.kind) {
     case 'always':
       return true
     case 'everyNth':
       return (visitCounts[fromPhaseId] ?? 0) % condition.n === 0
-    case 'custom':
-      throw new Error(
-        `Transition predicate "${condition.predicate}" is a 'custom' condition, which isn't supported yet — `
-        + 'HookRegistry only resolves to Hooks returning FileMutation[], not boolean predicates.',
-      )
+    case 'custom': {
+      const predicate = predicateRegistry?.resolve(condition.predicate)
+      return predicate !== undefined && predicate(fromPhaseId, visitCounts)
+    }
   }
 }
 

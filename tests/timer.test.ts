@@ -18,7 +18,8 @@ import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseSchema, PhaseIdSchema } from '../src/domain/phase/phase'
 import type { PhaseId } from '../src/domain/phase/phase'
-import { CompletionPolicyNameSchema } from '../src/domain/policy/completion-policy'
+import { PredicateNameSchema } from '../src/domain/hook/predicate'
+import type { PredicateRegistry } from '../src/domain/hook/predicate'
 
 const focusId = PhaseIdSchema.parse('focus')
 const breakId = PhaseIdSchema.parse('break')
@@ -244,7 +245,6 @@ describe('engineReducer', () => {
   test.each([
     ['queueCycle', { kind: 'queueCycle' } as const],
     ['futureDate', { kind: 'futureDate', after: Temporal.Duration.from({ days: 1 }) } as const],
-    ['custom', { kind: 'custom', name: CompletionPolicyNameSchema.parse('snooze') } as const],
   ])('tick at 0 throws for the not-yet-implemented %s completion policy', (_name, completionPolicy) => {
     const unimplementedGraph: PhaseGraph = PhaseGraphSchema.parse({
       id: 'test',
@@ -281,5 +281,72 @@ describe('engineReducer', () => {
     expect(() => engineReducer(state, { type: 'advance-phase' }, terminalGraph)).toThrow(
       'PhaseGraph "terminal" has no eligible transition from phase "only"',
     )
+  })
+
+  describe('custom TransitionCondition resolution', () => {
+    const isRestDayName = PredicateNameSchema.parse('isRestDay')
+    const skipToId = PhaseIdSchema.parse('skip-to')
+    const normalNextId = PhaseIdSchema.parse('normal-next')
+
+    const customConditionGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'custom-condition',
+      name: 'Custom condition graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'weights', label: 'Weights', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'skip-to', label: 'Skip to', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'normal-next', label: 'Normal next', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'weights', toPhaseId: 'skip-to', condition: { kind: 'custom', predicate: isRestDayName } },
+        { fromPhaseId: 'weights', toPhaseId: 'normal-next', condition: { kind: 'always' } },
+      ],
+    })
+
+    function registryResolvingTo(result: boolean): PredicateRegistry {
+      return { resolve: name => (name === isRestDayName ? () => result : undefined) }
+    }
+
+    test('a resolvable predicate returning true satisfies the transition', () => {
+      const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, registryResolvingTo(true))
+      expect(next.currentPhaseId).toBe(skipToId)
+    })
+
+    test('a resolvable predicate returning false falls through to the next candidate', () => {
+      const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, registryResolvingTo(false))
+      expect(next.currentPhaseId).toBe(normalNextId)
+    })
+
+    test('an unresolved predicate name falls through without throwing', () => {
+      const emptyRegistry: PredicateRegistry = { resolve: () => undefined }
+      const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, emptyRegistry)
+      expect(next.currentPhaseId).toBe(normalNextId)
+    })
+
+    test('omitting PredicateRegistry entirely treats every custom condition as unsatisfied', () => {
+      const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph)
+      expect(next.currentPhaseId).toBe(normalNextId)
+    })
+
+    test('every candidate unsatisfied still throws the existing "no eligible transition" error', () => {
+      const onlyCustomGraph: PhaseGraph = PhaseGraphSchema.parse({
+        id: 'only-custom',
+        name: 'Only custom graph',
+        phases: [
+          PhaseSchema.parse({ ...phaseDefaults, id: 'weights', label: 'Weights', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+          PhaseSchema.parse({ ...phaseDefaults, id: 'skip-to', label: 'Skip to', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        ],
+        transitions: [
+          { fromPhaseId: 'weights', toPhaseId: 'skip-to', condition: { kind: 'custom', predicate: isRestDayName } },
+        ],
+      })
+      const state: EngineState = { ...initialEngineState(onlyCustomGraph), status: 'running' }
+      expect(() => engineReducer(state, { type: 'advance-phase' }, onlyCustomGraph, registryResolvingTo(false))).toThrow(
+        'PhaseGraph "only-custom" has no eligible transition from phase "weights"',
+      )
+    })
   })
 })

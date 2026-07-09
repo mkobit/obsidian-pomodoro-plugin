@@ -26,9 +26,8 @@ Every file follows the same four sections.
 
 ## Known gaps this doc surfaces repeatedly
 
-Two mechanisms are fully specified in the Zod schemas but not yet executed by the engine.
-`completePhase` in `src/timer/reducer.ts` only implements `manualClear` and `noOp`/`null` — `queueCycle`, `futureDate`, and `custom` completion policies throw.
-`resolveNextPhaseId` in `src/timer/phase-graph.ts` only implements `always` and `everyNth` — a `custom` transition condition throws (this is flow-b74).
+`completePhase` in `src/timer/reducer.ts` only implements `manualClear` and `noOp`/`null` — `queueCycle` and `futureDate` completion policies throw (`CompletionPolicy`'s `'custom'` variant was removed as redundant with `onComplete`, see `habit-tracking.md`).
+`resolveNextPhaseId` in `src/timer/phase-graph.ts` now resolves a `custom` transition condition via a `PredicateRegistry` instead of throwing (flow-b74) — but no real predicate is registered anywhere yet, and a predicate's context is deliberately too narrow to check vault content, so `habit-tracking.md`'s `isRestDay` still can't be built end to end (see flow-gu1.10).
 
 `HookRegistry` and `LogTargetResolverRegistry` are both wired up in `src/main.ts`, but populated with no entries (`resolve: () => undefined`).
 Every `onEnter`/`onComplete`/`onSkip`/`onExit` hook and every `callback` log target currently resolves to nothing and silently no-ops.

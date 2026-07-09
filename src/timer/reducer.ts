@@ -3,6 +3,7 @@ import type { EngineState } from '../domain/session/engine-state'
 import type { Phase, PhaseId } from '../domain/phase/phase'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { HookContext, HookEvent } from '../domain/hook/hook'
+import type { PredicateRegistry } from '../domain/hook/predicate'
 import { PhaseInstanceIdSchema, SessionIdSchema } from '../domain/session/session'
 import type { PhaseInstance, PhaseInstanceEndReason, Session } from '../domain/session/session'
 import { findPhaseById, resolveNextPhaseId } from './phase-graph'
@@ -41,6 +42,7 @@ export function engineReducer(
   state: EngineState,
   action: EngineAction,
   graph: PhaseGraph,
+  predicateRegistry?: PredicateRegistry,
 ): EngineState {
   switch (action.type) {
     case 'start':
@@ -62,9 +64,9 @@ export function engineReducer(
       }
       return state.remaining.sign > 0
         ? { ...state, remaining: state.remaining.subtract({ seconds: 1 }) }
-        : completePhase(state, graph)
+        : completePhase(state, graph, predicateRegistry)
     case 'advance-phase':
-      return advancePhase(state, graph)
+      return advancePhase(state, graph, predicateRegistry)
     case 'set-active-file':
       return action.filePath === state.activeFilePath
         ? state
@@ -184,11 +186,11 @@ export function synthesizeHookContext(
  * the 'advance-phase' action, which always advances regardless of policy),
  * this is only reached when a phase's duration actually elapses.
  */
-function completePhase(state: EngineState, graph: PhaseGraph): EngineState {
+function completePhase(state: EngineState, graph: PhaseGraph, predicateRegistry: PredicateRegistry | undefined): EngineState {
   const phase = requirePhaseById(graph, state.currentPhaseId)
   const policy = phase.completionPolicy
   if (policy === null || policy.kind === 'noOp') {
-    return advancePhase(state, graph)
+    return advancePhase(state, graph, predicateRegistry)
   }
   if (policy.kind === 'manualClear') {
     return { ...state, status: 'completed' }
@@ -203,12 +205,12 @@ function completePhase(state: EngineState, graph: PhaseGraph): EngineState {
  * graph's transitions. The timer stops when a phase completes — the UI or
  * host decides whether to auto-start the next one.
  */
-function advancePhase(state: EngineState, graph: PhaseGraph): EngineState {
+function advancePhase(state: EngineState, graph: PhaseGraph, predicateRegistry: PredicateRegistry | undefined): EngineState {
   const updatedCounts = {
     ...state.phaseVisitCounts,
     [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
   }
-  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts)
+  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry)
   const nextPhase = requirePhaseById(graph, nextPhaseId)
   return {
     ...state,

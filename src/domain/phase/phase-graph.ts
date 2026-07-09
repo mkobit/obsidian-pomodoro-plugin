@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { PhaseIdSchema, PhaseSchema } from './phase'
-import { HookNameSchema } from '../hook/hook-reference'
+import { PredicateNameSchema } from '../hook/predicate'
 
 /**
  * Identifier for a PhaseGraph. Branded so it can't be mixed up with a PhaseId.
@@ -16,7 +16,7 @@ export type PhaseGraphId = z.infer<typeof PhaseGraphIdSchema>
 export const TransitionConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('always') }),
   z.object({ kind: z.literal('everyNth'), n: z.number().int().positive() }),
-  z.object({ kind: z.literal('custom'), predicate: HookNameSchema }),
+  z.object({ kind: z.literal('custom'), predicate: PredicateNameSchema }),
 ]).readonly()
 
 export type TransitionCondition = z.infer<typeof TransitionConditionSchema>

@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
 import { LogTargetResolverNameSchema, PhaseSchema } from '../src/domain/phase/phase'
-import { PhaseGraphSchema } from '../src/domain/phase/phase-graph'
+import { PhaseGraphSchema, TransitionConditionSchema } from '../src/domain/phase/phase-graph'
 import { CompletionPolicySchema } from '../src/domain/policy/completion-policy'
 import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
 import { HookReferenceSchema } from '../src/domain/hook/hook-reference'
@@ -78,12 +78,22 @@ describe('PhaseGraphSchema', () => {
   })
 })
 
+describe('TransitionConditionSchema', () => {
+  test('parses a custom condition with a predicate name', () => {
+    const result = TransitionConditionSchema.safeParse({ kind: 'custom', predicate: 'isRestDay' })
+    expect(result.success).toBe(true)
+  })
+})
+
 describe('CompletionPolicySchema', () => {
   test('parses each built-in variant', () => {
     expect(CompletionPolicySchema.safeParse({ kind: 'manualClear' }).success).toBe(true)
     expect(CompletionPolicySchema.safeParse({ kind: 'queueCycle' }).success).toBe(true)
     expect(CompletionPolicySchema.safeParse({ kind: 'noOp' }).success).toBe(true)
-    expect(CompletionPolicySchema.safeParse({ kind: 'custom', name: 'my-policy' }).success).toBe(true)
+  })
+
+  test('rejects the removed custom variant', () => {
+    expect(CompletionPolicySchema.safeParse({ kind: 'custom', name: 'my-policy' }).success).toBe(false)
   })
 
   test('parses futureDate with a positive duration', () => {

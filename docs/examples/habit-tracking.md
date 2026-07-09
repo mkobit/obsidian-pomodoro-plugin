@@ -21,25 +21,16 @@ The routine ends after `cardio`; the user stops the session rather than the grap
 
 ## Walk-through
 
-This is the one use case in this doc that can't be walked through against the live engine — `resolveNextPhaseId` throws immediately on a `custom` condition, before any `onEnter`/`onExit` sequencing would matter.
-Narrated as intended, ignoring that gap:
-
 1. Session starts at `weights`. `onEnter(weights)` fires — intended to open the day's habit note as a side effect (a `FileMutation`, e.g. `append`, not literally "open a file in the editor," since Hooks return `FileMutation[]`, not UI commands).
 2. `weights` runs its 20m timer and completes normally. Because `completionPolicy` is `null`, `completePhase` advances directly to `cardio` within the same `tick` — `onComplete(weights)`, `onExit(weights)`, `onEnter(cardio)` all fire together, same derivation as the pomodoro example.
    `onExit`'s hook is intended to log elapsed time regardless of whether the phase completed or was skipped.
-3. On a rest day, the graph should instead resolve `weights` → `cardio` directly via the `custom` transition, without ever entering `weights` — so `onEnter(weights)`/`onExit(weights)` should never fire that day.
+3. On a rest day, the graph should instead resolve `weights` → `cardio` directly via the `custom` transition, without ever entering `weights` — so `onEnter(weights)`/`onExit(weights)` should never fire that day. This now depends on `isRestDay` actually being registered (see "Where it strains") — as shipped today, `main.ts`'s `PredicateRegistry` is empty, so the `custom` condition resolves to unsatisfied and every exit from `weights` falls through to the `always` fallback, rest day or not. The mechanism works; nothing populates it yet.
 
 ## Where it strains
 
-- `TransitionCondition: { kind: 'custom' }` is fully specified in the schema, but `resolveNextPhaseId` throws on it unconditionally today (its own comment: "custom predicates aren't resolvable yet, since HookRegistry only resolves to Hooks that return `FileMutation[]`, not boolean-returning predicates").
-  This is flow-b74.
-  This use case cannot be built end to end right now — not a rough edge, a hard stop.
-- Declaring the custom transition first is necessary — `resolveNextPhaseId` takes the first candidate whose condition is satisfied, and satisfaction can't be checked without evaluating the predicate first.
-  That means it throws on every exit from `weights`, rest day or not.
-  Reordering to put `always` first would avoid the throw but silently defeat the skip logic entirely, since `always` matches unconditionally and the loop returns as soon as one candidate matches.
-- The type mismatch is structural, not just "the registry is empty": `HookRegistry.resolve` returns a `Hook`, `(context) => FileMutation[]`.
-  A transition predicate needs `(context) => boolean`.
-  Populating `HookRegistry` with entries doesn't fix this — `TransitionCondition.predicate` is typed as `HookName`, borrowing the same namespace as Hooks, but needs a different resolution target entirely (a predicate registry, or some other shape) if `custom` is ever going to work.
+- `resolveNextPhaseId` no longer throws on a `'custom'` condition (flow-b74) — it resolves the predicate via a `PredicateRegistry` and treats an unresolved name as "not satisfied," falling through to the next candidate. But `isRestDay` itself is not registered anywhere: it would need to check a note for a rest-day marker, which is I/O the predicate's context can't do — `Predicate` is deliberately `(fromPhaseId, visitCounts) => boolean`, not something that can read vault content. This example's actual skip logic is still not implementable end to end; see flow-gu1.10.
+- Declaring the custom transition first is still necessary — `resolveNextPhaseId` takes the first candidate whose condition is satisfied. Reordering to put `always` first would make the loop always match `always` before ever reaching the `custom` condition, silently defeating the skip logic (not a throw now, just dead configuration).
+- The type mismatch flagged before is fixed: `TransitionCondition.custom.predicate` is now its own branded `PredicateName`, not `HookName` — a predicate registered under a name isn't accidentally resolvable via `HookRegistry` or vice versa.
 - `onEnter`/`onExit` firing "regardless of how the phase ends" (per `phase.ts`'s own doc comment on `onExit`) is exactly what's wanted for "log elapsed time either way" — this part of the model already fits.
   The friction here is entirely in the transition condition, not the phase-level hook events.
 - Skipping a phase you never entered (rest day) is different from skipping a phase you did enter and abandoned partway (see `workout.md`).

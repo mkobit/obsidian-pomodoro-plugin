@@ -8,6 +8,7 @@ import { ObsidianFileMutationPort } from './timer/obsidian-file-mutation-port'
 import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
 import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
 import type { HookRegistry } from './domain/hook/hook'
+import type { PredicateRegistry } from './domain/hook/predicate'
 import { PomodoroTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 
@@ -40,7 +41,9 @@ export default class PomodoroPlugin extends Plugin {
     const hookRegistry: HookRegistry = {
       resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : undefined,
     }
-    this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port)
+    // No custom TransitionCondition predicate registered anywhere yet — see flow-b74/flow-gu1.10.
+    const predicateRegistry: PredicateRegistry = { resolve: () => undefined }
+    this.store = new EngineStore(POMODORO_PHASE_GRAPH, hookRegistry, port, predicateRegistry)
     this.ticker = new TimerTicker((action) => {
       void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
         // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6

@@ -1,5 +1,5 @@
 import { BasesView } from 'obsidian'
-import type { ViewOption, QueryController, App, TFile } from 'obsidian'
+import type { ViewOption, QueryController, App, TFile, BasesPropertyId } from 'obsidian'
 import type PomodoroPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
@@ -10,6 +10,15 @@ import { RoutineReplaceModal } from './routine-replace-modal'
 import { resolveActiveFilePath } from '../timer/queue-advance'
 import { createBaseQuerySource } from '../timer/base-query-task-source'
 import type { BaseQueryEntry } from '../timer/base-query-task-source'
+
+/**
+ * getViewOptions' declared `default: 'note.type'` for focusProperty/breakProperty is only used
+ * by Obsidian's settings UI to pre-fill the field — config.get()/getAsPropertyId() return
+ * null/undefined until a user explicitly sets it in the .base file, with no fallback to that
+ * declared default applied automatically. Without this, an unconfigured view's propId resolution
+ * silently fails and the queue filter falls through to "show every vault note" (found via e2e).
+ */
+const DEFAULT_QUEUE_PROPERTY_ID: BasesPropertyId = 'note.type'
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer'
@@ -128,16 +137,13 @@ export class PomodoroTimerView extends BasesView {
     // Determine phase type to choose appropriate filters
     const isFocus = phase.kind === FOCUS_PHASE_KIND
     const queueTitle = isFocus ? 'Work queue' : 'Break queue'
-    const propId = isFocus ? this.config?.getAsPropertyId('focusProperty') : this.config?.getAsPropertyId('breakProperty')
+    const propId = (isFocus ? this.config?.getAsPropertyId('focusProperty') : this.config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
     const rawTargetVal = isFocus ? this.config?.get('focusValue') : this.config?.get('breakValue')
     const targetValFallback = isFocus ? 'work' : 'break'
     const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
 
     const entries = this.data?.data || []
     const filteredEntries = entries.filter((entry) => {
-      if (!propId) {
-        return isFocus
-      }
       const valObj = entry.getValue(propId)
       const valStr = valObj ? valObj.toString() : ''
       return valStr.toLowerCase() === targetVal.toLowerCase()

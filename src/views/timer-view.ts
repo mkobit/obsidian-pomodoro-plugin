@@ -8,6 +8,8 @@ import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selecti
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
 import { resolveActiveFilePath } from '../timer/queue-advance'
+import { createBaseQuerySource } from '../timer/base-query-task-source'
+import type { BaseQueryEntry } from '../timer/base-query-task-source'
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer'
@@ -118,6 +120,11 @@ export class PomodoroTimerView extends BasesView {
     const stopBtn = controls.createEl('button', { text: 'Reset' })
     stopBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'stop' }))
 
+    // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase) — nothing to render.
+    if (phase.taskSourceId === null) {
+      return
+    }
+
     // Determine phase type to choose appropriate filters
     const isFocus = phase.kind === FOCUS_PHASE_KIND
     const queueTitle = isFocus ? 'Work queue' : 'Break queue'
@@ -136,24 +143,33 @@ export class PomodoroTimerView extends BasesView {
       return valStr.toLowerCase() === targetVal.toLowerCase()
     })
 
+    const baseQueryEntries: BaseQueryEntry[] = filteredEntries.map(entry => ({
+      path: entry.file.path,
+      basename: entry.file.basename,
+      frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
+    }))
+    const taskSource = createBaseQuerySource(baseQueryEntries)
+    this.plugin.taskSourceRegistry.register(phase.taskSourceId, taskSource)
+    const queueItems = taskSource.getQueue()
+
     // Queue Panel
     const queueEl = this.containerEl.createDiv({ cls: 'pomodoro-queue' })
     queueEl.createEl('h3', { text: queueTitle })
 
-    if (filteredEntries.length === 0) {
+    if (queueItems.length === 0) {
       queueEl.createEl('p', { text: 'No tasks found.' })
       return
     }
 
     const ul = queueEl.createEl('ul')
-    for (const entry of filteredEntries) {
+    for (const item of queueItems) {
       const li = ul.createEl('li')
-      const taskBtn = li.createEl('button', { text: entry.file.basename })
-      if (state.activeFilePath === entry.file.path) {
+      const taskBtn = li.createEl('button', { text: item.displayName })
+      if (state.activeFilePath === item.sourcePath) {
         li.addClass('is-active-task')
       }
       taskBtn.addEventListener('click', () => {
-        void this.plugin.store.dispatch({ type: 'start', filePath: entry.file.path })
+        void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
       })
     }
   }

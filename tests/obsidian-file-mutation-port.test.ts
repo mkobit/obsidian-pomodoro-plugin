@@ -1,3 +1,4 @@
+import { Temporal } from 'temporal-polyfill'
 import { mock, test, expect, describe } from 'bun:test'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
 import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
@@ -14,6 +15,13 @@ const fakeFile = (path: string): VaultFile => ({ path })
 async function expectToReject(promise: Promise<unknown>): Promise<void> {
   const settled = await promise.then(() => 'resolved' as const, () => 'rejected' as const)
   expect(settled).toBe('rejected')
+}
+
+function expectNumber(value: unknown): number {
+  if (typeof value !== 'number') {
+    throw new Error(`expected a number, got ${typeof value}`)
+  }
+  return value
 }
 
 function createFakeDeps(file: VaultFile | null) {
@@ -45,10 +53,16 @@ const appendMutation = {
   text: '- Completed a focus phase',
 } as const satisfies FileMutation
 
-const reorderMutation = {
+const reorderToBackMutation = {
   kind: 'queueReorder',
   itemId,
   position: 'back',
+} as const satisfies FileMutation
+
+const reorderToFrontMutation = {
+  kind: 'queueReorder',
+  itemId,
+  position: 'front',
 } as const satisfies FileMutation
 
 const statusChangeMutation = {
@@ -97,17 +111,55 @@ describe('ObsidianFileMutationPort', () => {
     expect(append).not.toHaveBeenCalled()
   })
 
-  test('reorderQueueItem always rejects', async () => {
-    const { deps } = createFakeDeps(fakeFile('irrelevant.md'))
+  test('reorderQueueItem writes an increasing priority for position "back"', async () => {
+    const { deps, getWrittenFrontmatter } = createFakeDeps(fakeFile('irrelevant.md'))
     const port = new ObsidianFileMutationPort(deps)
 
-    await expectToReject(port.reorderQueueItem(reorderMutation))
+    const before = Temporal.Now.instant().epochMilliseconds
+    await port.reorderQueueItem(reorderToBackMutation)
+    const after = Temporal.Now.instant().epochMilliseconds
+
+    const priority = expectNumber(getWrittenFrontmatter()?.['pomodoro-priority'])
+    expect(priority).toBeGreaterThanOrEqual(before)
+    expect(priority).toBeLessThanOrEqual(after)
   })
 
-  test('changeQueueItemStatus always rejects', async () => {
-    const { deps } = createFakeDeps(fakeFile('irrelevant.md'))
+  test('reorderQueueItem writes a decreasing priority for position "front"', async () => {
+    const { deps, getWrittenFrontmatter } = createFakeDeps(fakeFile('irrelevant.md'))
+    const port = new ObsidianFileMutationPort(deps)
+
+    const before = -Temporal.Now.instant().epochMilliseconds
+    await port.reorderQueueItem(reorderToFrontMutation)
+    const after = -Temporal.Now.instant().epochMilliseconds
+
+    const priority = expectNumber(getWrittenFrontmatter()?.['pomodoro-priority'])
+    // before/after are swapped relative to the back case since negation flips ordering.
+    expect(priority).toBeLessThanOrEqual(before)
+    expect(priority).toBeGreaterThanOrEqual(after)
+  })
+
+  test('reorderQueueItem rejects when itemId does not resolve to a vault file', async () => {
+    const { deps, processFrontMatter } = createFakeDeps(null)
+    const port = new ObsidianFileMutationPort(deps)
+
+    await expectToReject(port.reorderQueueItem(reorderToBackMutation))
+    expect(processFrontMatter).not.toHaveBeenCalled()
+  })
+
+  test('changeQueueItemStatus writes the status to the resolved file', async () => {
+    const { deps, getWrittenFrontmatter } = createFakeDeps(fakeFile('irrelevant.md'))
+    const port = new ObsidianFileMutationPort(deps)
+
+    await port.changeQueueItemStatus(statusChangeMutation)
+
+    expect(getWrittenFrontmatter()).toEqual({ 'pomodoro-status': 'done' })
+  })
+
+  test('changeQueueItemStatus rejects when itemId does not resolve to a vault file', async () => {
+    const { deps, processFrontMatter } = createFakeDeps(null)
     const port = new ObsidianFileMutationPort(deps)
 
     await expectToReject(port.changeQueueItemStatus(statusChangeMutation))
+    expect(processFrontMatter).not.toHaveBeenCalled()
   })
 })

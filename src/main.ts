@@ -9,6 +9,8 @@ import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
 import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
 import type { HookRegistry } from './domain/hook/hook'
 import type { PredicateRegistry } from './domain/hook/predicate'
+import { createTaskSourceRegistry } from './timer/task-source-registry'
+import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
 import { PomodoroTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 
@@ -26,6 +28,7 @@ export default class PomodoroPlugin extends Plugin {
   public settings: PomodoroSettings = DEFAULT_SETTINGS
   public store!: EngineStore
   public ticker!: TimerTicker
+  public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
 
   async onload() {
     await this.loadSettings()

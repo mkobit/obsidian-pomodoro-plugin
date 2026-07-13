@@ -1,16 +1,9 @@
 import { z } from 'zod'
 import type { Temporal } from 'temporal-polyfill'
 
-/** Identifier for a configured TaskSource, referenced from Phase.taskSourceId. */
+/** Identifier for a configured TaskSource, referenced from Phase.taskSourceId and resolved via TaskSourceRegistry. */
 export const TaskSourceIdSchema = z.string().min(1).brand<'TaskSourceId'>()
 export type TaskSourceId = z.infer<typeof TaskSourceIdSchema>
-
-/**
- * Where a TaskSource's items come from. Open-ended by design — a live Bases
- * query is the common case, but several use cases (workout reps, a fixed
- * exercise sequence) have no Bases involvement at all.
- */
-export type TaskSourceKind = 'baseQuery' | 'staticList' | 'fixedSequence'
 
 /** Identifier for a task queue item, independent of where it was sourced from. */
 export const TaskQueueItemIdSchema = z.string().min(1).brand<'TaskQueueItemId'>()
@@ -39,18 +32,24 @@ export interface TaskQueueItem {
   readonly lastCycledAt: Temporal.Instant | null
 }
 
-/** Identity/kind data for a configured TaskSource, kept separate from the behavioral TaskSource interface below. */
-export interface TaskSourceConfig {
-  readonly id: TaskSourceId
-  readonly kind: TaskSourceKind
-}
-
 /**
  * Extension point: abstraction over where a phase's items come from.
  * Optional per-Phase, not core to Phase — several use cases (stretch
- * routine, standup) have no queue at all. A real Bases-backed implementation
- * is deferred to flow-djx.
+ * routine, standup) have no queue at all. BaseQuerySource (src/timer/) is the
+ * concrete Bases-backed implementation; see openspec/changes/archive's
+ * base-query-task-source change (once archived) for the design.
  */
 export interface TaskSource {
   readonly getQueue: () => readonly TaskQueueItem[]
+}
+
+/**
+ * Resolves a TaskSource by id. Resolve-only, matching HookRegistry/
+ * PredicateRegistry's shape — mutability (register/unregister) lives in a
+ * wider src/timer/-local type, since only the Obsidian-integration layer
+ * needs to keep a baseQuery source's contents fresh as Bases live-query data
+ * changes.
+ */
+export interface TaskSourceRegistry {
+  readonly resolve: (id: TaskSourceId) => TaskSource | undefined
 }

@@ -17,7 +17,7 @@ Uses `PhaseGraph` branching and a duration-less phase for the rep-based set.
 
 Transitions: `warmup` → `set` (`always`), `set` → `rest` (`always`), `rest` → `set` (`always`, looping — see "Where it strains" for how the loop is supposed to end).
 
-`exercises` is a `TaskSource` of kind `fixedSequence` — an ordered list of exercises with no Bases query involved, per `task-source.ts`'s own motivating comment ("workout reps, a fixed exercise sequence").
+`exercises` names a hypothetical `TaskSource` backed by a fixed, ordered list of exercises — no Bases query involved, unlike the `focus-queue`/`break-queue` `BaseQuerySource`s the shipped Pomodoro graph uses (see `docs/examples/pomodoro.md`). No such fixed-sequence implementation exists yet — see "Where it strains."
 
 ## Walk-through
 
@@ -39,4 +39,4 @@ Transitions: `warmup` → `set` (`always`), `set` → `rest` (`always`), `rest` 
 - "Loop until the exercise sequence is exhausted" isn't expressible as a `TransitionCondition` today.
   `always`/`everyNth`/`custom` are all keyed off visit counts or an unresolvable predicate — none of them can ask "does the attached `TaskSource` have any items left?"
   Ending the workout currently has to be a manual `stop`, not a graph-driven transition.
-- `fixedSequence` is one of three `TaskSourceKind` values, but the `TaskSource` interface (`getQueue(): readonly TaskQueueItem[]`) has no real implementation yet for any kind — deferred to flow-djx.
+- A Bases-backed `TaskSource` (`BaseQuerySource`) is real now (see `docs/examples/pomodoro.md`), but a fixed, ordered, no-Bases-query `TaskSource` like `exercises` above has no implementation yet — nothing currently reads `Set`'s `taskSourceId` at all, since it isn't `focus-queue`/`break-queue`.

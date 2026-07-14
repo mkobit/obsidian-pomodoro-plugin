@@ -9,13 +9,14 @@ Repeats until the user stops the session.
 ## Domain mapping
 
 This is the plugin's actual shipped default graph — `POMODORO_PHASE_GRAPH` in `src/timer/phase-graph.ts:104`.
-It has no task queue attached: `taskSourceId` is `null` on every phase (Bases-backed `TaskSource` wiring is deferred to flow-djx), and `completionPolicy` is `null` on every phase.
+Every phase has a `taskSourceId` (`focus-queue`/`break-queue`), resolved by `PomodoroTimerView` to a real `BaseQuerySource` built from whichever Bases entries match `focusProperty`/`focusValue` (or `breakProperty`/`breakValue`) — see `openspec/specs/base-query-task-source/spec.md`.
+`completionPolicy` is still `null` on every phase, though: nothing in the shipped graph triggers `queueCycle` yet (see "Where it strains").
 
 | Phase | id | kind | duration | taskSourceId | completionPolicy | logTarget | hooks |
 |---|---|---|---|---|---|---|---|
-| Focus | `focus` | `focus` | 25m | `null` | `null` | `activeItem` | none |
-| Short break | `break` | `break` | 5m | `null` | `null` | `callback: dailyNote` | none |
-| Long break | `long-break` | `break` | 15m | `null` | `null` | `callback: dailyNote` | none |
+| Focus | `focus` | `focus` | 25m | `focus-queue` | `null` | `activeItem` | none |
+| Short break | `break` | `break` | 5m | `break-queue` | `null` | `callback: dailyNote` | none |
+| Long break | `long-break` | `break` | 15m | `break-queue` | `null` | `callback: dailyNote` | none |
 
 Transitions (declared in this order — `resolveNextPhaseId` takes the first match):
 
@@ -24,7 +25,7 @@ Transitions (declared in this order — `resolveNextPhaseId` takes the first mat
 3. `break` → `focus` when `always`
 4. `long-break` → `focus` when `always`
 
-A task queue attached to `focus` is expressible in the schema today (`taskSourceId: tasks`, `completionPolicy: { kind: 'queueCycle' }`), but is not part of the shipped default — see "Where it strains."
+Pairing `focus`'s `taskSourceId` with `completionPolicy: { kind: 'queueCycle' }` is expressible in the schema today, but isn't part of the shipped default — see "Where it strains."
 
 ## Walk-through
 
@@ -41,7 +42,7 @@ Each `onComplete`/`onExit`/`onEnter` is resolved through `HookRegistry` and appl
 
 ## Where it strains
 
-- `focus.completionPolicy` is `null` today, not `queueCycle` — the shipped graph has no task queue at all yet, so this example doesn't exercise `queueCycle` as configured.
+- `focus.completionPolicy` is `null` today, not `queueCycle` — the shipped graph's queue is real (see the domain mapping above), but nothing yet ends a focus phase by cycling it, so this example doesn't exercise `queueCycle` as configured.
 - Attaching a task queue (`completionPolicy: { kind: 'queueCycle' }`) is valid per the Zod schema, but `completePhase` only implements `manualClear` and `noOp`/`null` — a `queueCycle` phase throws the moment its duration reaches zero.
   `queueCycle` is defined but unexecuted.
 - `break`/`long-break` use `logTarget: { kind: 'callback', name: 'dailyNote' }`, but `src/main.ts` wires `logTargetResolverRegistry: { resolve: () => undefined }`.

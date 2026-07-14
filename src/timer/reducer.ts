@@ -163,7 +163,8 @@ export function synthesizeHookContext(
     startedAt: now,
     endedAt: event === 'onEnter' ? null : now,
     endReason,
-    // No TaskSource/TaskQueueItem runtime integration yet (flow-djx).
+    // TaskSource/TaskQueueItem now resolve for real (base-query-task-source), but the reducer doesn't
+    // populate activeItem/itemsTouched from them yet — deferred to flow-c08's history-tracking work.
     activeItem: null,
     itemsTouched: [],
     // This call's own mutations are its return value, not known yet while its context is being built.

@@ -1,3 +1,4 @@
+import { Temporal } from 'temporal-polyfill'
 import type { FileMutation } from '../domain/mutation/file-mutation'
 import type { FileMutationPort } from '../domain/mutation/apply-mutations'
 
@@ -42,12 +43,6 @@ export function resolveFile(vault: { getFileByPath(path: string): VaultFile | nu
   return file
 }
 
-const notYetSupported = (kind: Extract<FileMutation, { kind: 'queueReorder' | 'queueStatusChange' }>['kind']): Promise<void> =>
-  Promise.reject(new Error(
-    `FileMutationPort: "${kind}" mutations are not yet supported — there is no TaskSource/queue runtime `
-    + 'to resolve a TaskQueueItemId to a vault file yet (see flow-djx).',
-  ))
-
 /**
  * Real, Obsidian-backed `FileMutationPort`. See
  * openspec/specs/obsidian-file-mutation-port/spec.md.
@@ -72,11 +67,25 @@ export class ObsidianFileMutationPort implements FileMutationPort {
     await this.deps.vault.append(file, mutation.text)
   }
 
-  reorderQueueItem(_mutation: Extract<FileMutation, { kind: 'queueReorder' }>): Promise<void> {
-    return notYetSupported('queueReorder')
+  /**
+   * Writes a `pomodoro-priority` sort key: a live Base query can't be
+   * reordered in place, so "reorder" means writing a value the user's own
+   * Base sort config orders by. Epoch-millis (negated for 'front'), computed
+   * locally with no sibling-queue lookup — see design.md decision 6.
+   */
+  async reorderQueueItem(mutation: Extract<FileMutation, { kind: 'queueReorder' }>): Promise<void> {
+    const file = resolveFile(this.deps.vault, mutation.itemId)
+    const epochMillis = Temporal.Now.instant().epochMilliseconds
+    const priority = mutation.position === 'back' ? epochMillis : -epochMillis
+    await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter['pomodoro-priority'] = priority
+    })
   }
 
-  changeQueueItemStatus(_mutation: Extract<FileMutation, { kind: 'queueStatusChange' }>): Promise<void> {
-    return notYetSupported('queueStatusChange')
+  async changeQueueItemStatus(mutation: Extract<FileMutation, { kind: 'queueStatusChange' }>): Promise<void> {
+    const file = resolveFile(this.deps.vault, mutation.itemId)
+    await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter['pomodoro-status'] = mutation.status
+    })
   }
 }

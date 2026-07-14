@@ -17,8 +17,9 @@ export interface HookContext {
   readonly session: Session
   /**
    * The engine's current active file path. Distinct from
-   * `instance.activeItem` (a richer TaskQueueItem, reserved for flow-djx's
-   * TaskSource runtime integration and hardcoded null until then).
+   * `instance.activeItem` (a richer TaskQueueItem — TaskSource itself now
+   * resolves for real via base-query-task-source, but the reducer doesn't
+   * populate activeItem from it yet; hardcoded null until flow-c08).
    */
   readonly activeFilePath: string | null
 }

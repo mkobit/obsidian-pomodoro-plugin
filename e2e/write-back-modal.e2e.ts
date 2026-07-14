@@ -52,7 +52,7 @@ function modalLocator(page: Page) {
 
 test.describe('write-back confirmation modal', () => {
   test.beforeEach(async ({ obsidianPage: { page, vaultPath } }) => {
-    const note = createNote(TASK_PATH, { 'note.type': 'work', 'pomodoros': 3 })
+    const note = createNote(TASK_PATH, { type: 'work', pomodoros: 3 })
     const writeError = await writeNoteToVault(vaultPath, note)
     expect(writeError).toBeUndefined()
 

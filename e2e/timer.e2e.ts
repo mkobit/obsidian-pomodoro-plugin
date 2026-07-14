@@ -86,8 +86,14 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
     // routineFile -- the default POMODORO_PHASE_GRAPH), whose focus phase's taskSourceId is
     // focus-queue. No engine interaction needed: the queue renders from the shared engine's
     // default (untouched) state, which starts at the 'focus' phase.
+    //
+    // Other describe blocks in this file naturally give Bases' async query time to resolve via
+    // several UI interactions (menu clicks) before their first assertion; this one asserts
+    // almost immediately after plugin registration, which raced Bases' query resolution on a
+    // slower CI runner ("element(s) not found", not wrong content) -- a generous timeout here
+    // is deliberate, not copy-paste default.
     const queue = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-queue')
-    await expect(queue.locator('h3')).toHaveText('Work queue')
+    await expect(queue.locator('h3')).toHaveText('Work queue', { timeout: 20_000 })
 
     // e2e/vault/generator.ts's generatePomodoroNotes(DEFAULT_VAULT_SEED) is deterministic --
     // these five notes' pomodoro-priority values sort ascending as below (one has no
@@ -99,6 +105,6 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
       '05-fix-flaky-test',
       '02-review-pr-feedback',
       '03-update-onboarding-docs',
-    ])
+    ], { timeout: 20_000 })
   })
 })

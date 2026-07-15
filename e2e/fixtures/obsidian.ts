@@ -5,6 +5,7 @@ import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as net from 'node:net'
 import { stripGitignoredVaultState } from '../vault'
+import obsidianVersion from '../obsidian-version.json' with { type: 'json' }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../')
 const VAULT_PATH = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
@@ -61,8 +62,8 @@ export const test = base.extend<ObsidianFixtures>({
     await stripGitignoredVaultState(copiedVault)
 
     const { proc, vault } = await launcher.launch({
-      appVersion: 'latest',
-      installerVersion: 'latest',
+      appVersion: obsidianVersion.appVersion,
+      installerVersion: obsidianVersion.installerVersion,
       vault: copiedVault,
       copy: false,
       plugins: [ROOT_DIR],

@@ -48,3 +48,23 @@ export async function writeVault(baseDir: string, notes: readonly NoteDefinition
   const results = await Promise.all(notes.map(note => writeNoteToVault(baseDir, note)))
   return results.filter((result): result is Error => result instanceof Error)
 }
+
+/**
+ * Removes the paths listed in `<vaultDir>/.gitignore` from `vaultDir` itself.
+ * A plain recursive copy of the vault (e.g. obsidian-launcher's `copy: true`) is
+ * gitignore-unaware, so runtime state like `.obsidian/workspace.json` or a stray
+ * `.obsidian/plugins/` install can leak from the source vault into the copy and make
+ * a test pass/fail for reasons that wouldn't reproduce from a fresh checkout.
+ */
+export async function stripGitignoredVaultState(vaultDir: string): Promise<void> {
+  const gitignore = await fs.readFile(path.join(vaultDir, '.gitignore'), 'utf-8').catch(() => '')
+  const patterns = gitignore
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && !line.startsWith('#'))
+    .map(line => line.replace(/\/$/, ''))
+
+  await Promise.all(patterns.map(pattern =>
+    fs.rm(path.join(vaultDir, pattern), { recursive: true, force: true }),
+  ))
+}

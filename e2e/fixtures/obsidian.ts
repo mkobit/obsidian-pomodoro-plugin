@@ -4,6 +4,7 @@ import type { ChildProcess } from 'node:child_process'
 import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as net from 'node:net'
+import { stripGitignoredVaultState } from '../vault'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../')
 const VAULT_PATH = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
@@ -51,11 +52,19 @@ export const test = base.extend<ObsidianFixtures>({
     const port = await findFreePort()
     const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
 
+    // launcher.setupVault's copy is a plain recursive fs.cp -- it doesn't know about
+    // .gitignore, so the per-test copy is stripped of gitignored runtime state
+    // (.obsidian/workspace.json, .obsidian/plugins/, etc.) before Obsidian ever sees it.
+    // Otherwise a local dev machine's leftover interactive-session state can silently
+    // leak into every test and diverge from what a fresh checkout/CI produces.
+    const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
+    await stripGitignoredVaultState(copiedVault)
+
     const { proc, vault } = await launcher.launch({
       appVersion: 'latest',
       installerVersion: 'latest',
-      vault: VAULT_PATH,
-      copy: true,
+      vault: copiedVault,
+      copy: false,
       plugins: [ROOT_DIR],
       args: [`--remote-debugging-port=${port}`],
       spawnOptions: { stdio: 'pipe' },

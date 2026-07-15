@@ -76,6 +76,14 @@ export const test = base.extend<ObsidianFixtures>({
       { timeout: 30_000 },
     )
 
+    // window.app existing only means the renderer booted -- workspace.json-driven leaf restore
+    // (e.g. the Tasks.base leaf) is a separate, later async step that can still be in flight here.
+    // workspace.layoutReady is Obsidian's own public signal that restore has finished.
+    await page.waitForFunction(
+      () => window.app!.workspace.layoutReady,
+      { timeout: 30_000 },
+    )
+
     await use({ page, vaultPath: vault ?? VAULT_PATH })
 
     await browser.close()

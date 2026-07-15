@@ -79,19 +79,26 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
         { pluginId: PLUGIN_ID },
       ),
     ).toBe(true)
+
+    // .obsidian/workspace.json is gitignored (runtime state, not canonical vault content) -- a
+    // fresh checkout (CI, or any new clone) has no persisted leaf, so Tasks.base must be opened and
+    // its "Pomodoro" sub-view selected explicitly, same as the "Workout" sub-view below.
+    await evaluateObsidian(page, async (app) => {
+      const file = app.vault.getFileByPath('Tasks.base')
+      if (!file) {
+        throw new Error('Tasks.base not found')
+      }
+      const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
+      await leaf.openFile(file)
+    })
+    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Pomodoro' }).click()
   })
 
   test('Work queue renders real Bases entries sorted by pomodoro-priority', async ({ obsidianPage: { page } }) => {
-    // Passes reliably every local run (incl. under xvfb) but the queue panel never appears in
-    // CI specifically -- "element(s) not found" even after a 20s wait, so not a timing race.
-    // Root cause not yet identified; skip in CI rather than block the pipeline on an unexplained
-    // environment difference. Tracked by flow-q8q (e2e Playwright+CDP reliability investigation).
-    test.skip(!!process.env.CI, 'Fails to find the queue panel in CI only -- see flow-q8q')
-
-    // Tasks.base's persisted workspace.json opens directly on the "Pomodoro" sub-view (no
-    // routineFile -- the default POMODORO_PHASE_GRAPH), whose focus phase's taskSourceId is
-    // focus-queue. No engine interaction needed: the queue renders from the shared engine's
-    // default (untouched) state, which starts at the 'focus' phase.
+    // Tasks.base's "Pomodoro" sub-view (no routineFile -- the default POMODORO_PHASE_GRAPH) has a
+    // focus phase whose taskSourceId is focus-queue. No engine interaction needed: the queue
+    // renders from the shared engine's default (untouched) state, which starts at the 'focus' phase.
     const queue = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-queue')
     await expect(queue.locator('h3')).toHaveText('Work queue')
 

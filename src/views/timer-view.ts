@@ -35,6 +35,7 @@ export class PomodoroTimerView extends BasesView {
   }
 
   onload() {
+    this.containerEl.addClass('pomodoro-timer-view')
     this.unsubscribe = this.plugin.store.subscribe((state) => {
       this.render(state)
     })
@@ -71,6 +72,18 @@ export class PomodoroTimerView extends BasesView {
       if (configuredPath !== null) {
         void this.loadRoutineFile(configuredPath)
       }
+    }
+
+    // Test-observable marker: routineResolution settles asynchronously (loadRoutineFile reads the
+    // routine file), one or more renders after a Bases sub-view switch. Without this, an e2e click
+    // on "Start" can race ahead of the load and land on the previous sub-view's still-attached
+    // button (flow-6v7).
+    this.containerEl.dataset.routineState = this.routineResolution.kind
+    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
+      this.containerEl.dataset.viewGraphId = this.routineResolution.graph.id
+    }
+    else {
+      delete this.containerEl.dataset.viewGraphId
     }
 
     if (this.routineResolution.kind === 'error') {

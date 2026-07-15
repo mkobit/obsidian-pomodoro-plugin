@@ -42,8 +42,14 @@ test.describe('duration-less phase (finish-phase / "Done" control)', () => {
   })
 
   test('renders the phase (not blank) and a Done button appears once running, completing the phase on click', async ({ obsidianPage: { page } }) => {
+    const view = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-timer-view')
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-timer-panel')
     const controls = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-controls')
+
+    // beforeEach's sub-view switch resolves before this view's async routine-file load settles --
+    // wait for the resolved-graph marker so Start isn't clicked against the previous sub-view's
+    // still-attached button mid-load (flow-6v7).
+    await expect(view).toHaveAttribute('data-view-graph-id', 'workout')
 
     // The header currently reflects the shared engine's default (untouched) graph, not this tab's
     // own Workout routine -- that only takes effect once Start switches the engine's active graph.

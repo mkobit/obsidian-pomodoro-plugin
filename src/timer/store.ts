@@ -81,7 +81,7 @@ export class EngineStore {
     }
 
     let applications: readonly HookEventApplication[] = []
-    for (const { event, phase } of deriveHookEvents(prevState, nextState, action, this.graph)) {
+    for (const { event, phase, endReason } of deriveHookEvents(prevState, nextState, action, this.graph)) {
       const reference = hookReferenceFor(phase, event)
       if (reference === null) {
         continue
@@ -90,7 +90,7 @@ export class EngineStore {
       if (hook === undefined) {
         continue
       }
-      const mutations = await hook(synthesizeHookContext(phase, event, nextState))
+      const mutations = await hook(synthesizeHookContext(phase, event, endReason, nextState))
       const result = await applyMutations(port, mutations)
       applications = [...applications, { event, phase, result }]
     }

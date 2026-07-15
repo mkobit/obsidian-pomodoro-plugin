@@ -348,6 +348,45 @@ describe('EngineStore hook firing', () => {
     expect(resolveSpy).not.toHaveBeenCalled()
   })
 
+  test.each(['running', 'paused'] as const)(
+    'stop from %s fires onExit with endReason "abandoned", the one PhaseInstanceEndReason no other path produces',
+    async (status) => {
+      const hookSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
+      const registry = createFakeRegistry({ exit: hookSpy })
+      const graph = buildGraph({ focus: { onExit: hookRef('exit') } })
+      const store = new EngineStore(graph, registry, createFakePort())
+      await store.dispatch({ type: 'start' })
+      if (status === 'paused') {
+        await store.dispatch({ type: 'pause' })
+      }
+
+      const applications = await store.dispatch({ type: 'stop' })
+
+      expect(applications.map(a => a.event)).toEqual(['onExit'])
+      expect(hookSpy).toHaveBeenCalledTimes(1)
+      expect(hookSpy.mock.calls[0]?.[0]?.instance.endReason).toBe('abandoned')
+    },
+  )
+
+  test.each(['stopped', 'completed'] as const)(
+    'stop from %s fires no hook events -- there is no in-progress instance to abandon',
+    async (status) => {
+      const resolveSpy = mock((_name: string) => undefined)
+      const graph = buildGraph({ focus: { completionPolicy: { kind: 'manualClear' }, onExit: hookRef('exit') } })
+      const store = new EngineStore(graph, { resolve: resolveSpy }, createFakePort())
+      if (status === 'completed') {
+        await store.dispatch({ type: 'start' })
+        await store.dispatch({ type: 'finish-phase' })
+      }
+      resolveSpy.mockClear()
+
+      const applications = await store.dispatch({ type: 'stop' })
+
+      expect(applications).toEqual([])
+      expect(resolveSpy).not.toHaveBeenCalled()
+    },
+  )
+
   test('a tick with remaining time left fires no hook events', async () => {
     const resolveSpy = mock((_name: string) => undefined)
     const graph = buildGraph({ focus: { onEnter: hookRef('enter'), onExit: hookRef('exit') } })

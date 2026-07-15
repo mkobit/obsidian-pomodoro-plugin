@@ -81,6 +81,7 @@ export function engineReducer(
 export interface HookEventOccurrence {
   readonly event: HookEvent
   readonly phase: Phase
+  readonly endReason: PhaseInstanceEndReason | null
 }
 
 /**
@@ -101,14 +102,14 @@ export function deriveHookEvents(
   // finish-phase reaches completePhase the same way a zero-remaining tick does, so it derives identically.
   if (action.type === 'tick' || action.type === 'finish-phase') {
     if (nextState.status === 'completed' && prevState.status !== 'completed') {
-      return [{ event: 'onComplete', phase: prevPhase }]
+      return [{ event: 'onComplete', phase: prevPhase, endReason: 'completed' }]
     }
     if (prevState.currentPhaseId !== nextState.currentPhaseId) {
       const nextPhase = requirePhaseById(graph, nextState.currentPhaseId)
       return [
-        { event: 'onComplete', phase: prevPhase },
-        { event: 'onExit', phase: prevPhase },
-        { event: 'onEnter', phase: nextPhase },
+        { event: 'onComplete', phase: prevPhase, endReason: 'completed' },
+        { event: 'onExit', phase: prevPhase, endReason: null },
+        { event: 'onEnter', phase: nextPhase, endReason: null },
       ]
     }
     return []
@@ -118,10 +119,17 @@ export function deriveHookEvents(
     const nextPhase = requirePhaseById(graph, nextState.currentPhaseId)
     const abandoned = prevState.status === 'running' || prevState.status === 'paused'
     return [
-      ...(abandoned ? [{ event: 'onSkip', phase: prevPhase } as const] : []),
-      { event: 'onExit', phase: prevPhase },
-      { event: 'onEnter', phase: nextPhase },
+      ...(abandoned ? [{ event: 'onSkip', phase: prevPhase, endReason: 'skipped' } as const] : []),
+      { event: 'onExit', phase: prevPhase, endReason: null },
+      { event: 'onEnter', phase: nextPhase, endReason: null },
     ]
+  }
+
+  // A 'stop' mid-phase abandons the in-progress instance — onExit fires with 'abandoned', the one
+  // PhaseInstanceEndReason no other action path produces (flow-gu1.33). Stopping from 'stopped' or
+  // 'completed' has no in-progress instance to abandon, so nothing fires.
+  if (action.type === 'stop' && (prevState.status === 'running' || prevState.status === 'paused')) {
+    return [{ event: 'onExit', phase: prevPhase, endReason: 'abandoned' }]
   }
 
   return []
@@ -137,6 +145,7 @@ export function deriveHookEvents(
 export function synthesizeHookContext(
   phase: Phase,
   event: HookEvent,
+  endReason: PhaseInstanceEndReason | null,
   nextState: EngineState,
 ): HookContext {
   const now = Temporal.Now.instant()
@@ -147,11 +156,6 @@ export function synthesizeHookContext(
       ? Temporal.Duration.from({ seconds: 0 })
       // Best-effort "how much of the plan elapsed", not a wall-clock measurement — superseded once flow-c08 tracks real elapsed time.
       : plannedDuration.subtract(nextState.remaining ?? plannedDuration)
-  const endReason: PhaseInstanceEndReason | null = event === 'onComplete'
-    ? 'completed'
-    : event === 'onSkip'
-      ? 'skipped'
-      : null
 
   const instance: PhaseInstance = {
     // Fresh id per hook call, not stable across a phase's lifetime — superseded once flow-c08 tracks real PhaseInstance identity.

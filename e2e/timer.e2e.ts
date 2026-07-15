@@ -82,12 +82,6 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
   })
 
   test('Work queue renders real Bases entries sorted by pomodoro-priority', async ({ obsidianPage: { page } }) => {
-    // Passes reliably every local run (incl. under xvfb) but the queue panel never appears in
-    // CI specifically -- "element(s) not found" even after a 20s wait, so not a timing race.
-    // Root cause not yet identified; skip in CI rather than block the pipeline on an unexplained
-    // environment difference. Tracked by flow-q8q (e2e Playwright+CDP reliability investigation).
-    test.skip(!!process.env.CI, 'Fails to find the queue panel in CI only -- see flow-q8q')
-
     // Tasks.base's persisted workspace.json opens directly on the "Pomodoro" sub-view (no
     // routineFile -- the default POMODORO_PHASE_GRAPH), whose focus phase's taskSourceId is
     // focus-queue. No engine interaction needed: the queue renders from the shared engine's

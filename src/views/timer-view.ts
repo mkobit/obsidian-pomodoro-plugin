@@ -1,8 +1,9 @@
 import { BasesView } from 'obsidian'
-import type { ViewOption, QueryController, App, TFile, BasesPropertyId } from 'obsidian'
+import type { ViewOption, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
 import type PomodoroPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
+import type { Phase } from '../domain/phase/phase'
 import { findPhaseById, FOCUS_PHASE_KIND, POMODORO_PHASE_GRAPH } from '../timer/phase-graph'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
@@ -106,6 +107,13 @@ export class PomodoroTimerView extends BasesView {
 
     const isViewRoutineActive = graph.id === viewGraph.id
 
+    // Only the view backing the currently active graph writes to the shared registry — otherwise
+    // two simultaneously open Bases leaves showing different (inactive) sub-views would stomp each
+    // other's registration for a taskSourceId they happen to share (flow-gu1.29).
+    if (isViewRoutineActive) {
+      this.registerTaskSources(viewGraph)
+    }
+
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'pomodoro-timer-panel' })
     const headerText = state.remaining === null
@@ -147,29 +155,8 @@ export class PomodoroTimerView extends BasesView {
       return
     }
 
-    // Determine phase type to choose appropriate filters
-    const isFocus = phase.kind === FOCUS_PHASE_KIND
-    const queueTitle = isFocus ? 'Work queue' : 'Break queue'
-    const propId = (isFocus ? this.config?.getAsPropertyId('focusProperty') : this.config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
-    const rawTargetVal = isFocus ? this.config?.get('focusValue') : this.config?.get('breakValue')
-    const targetValFallback = isFocus ? 'work' : 'break'
-    const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
-
-    const entries = this.data?.data || []
-    const filteredEntries = entries.filter((entry) => {
-      const valObj = entry.getValue(propId)
-      const valStr = valObj ? valObj.toString() : ''
-      return valStr.toLowerCase() === targetVal.toLowerCase()
-    })
-
-    const baseQueryEntries: BaseQueryEntry[] = filteredEntries.map(entry => ({
-      path: entry.file.path,
-      basename: entry.file.basename,
-      frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
-    }))
-    const taskSource = createBaseQuerySource(baseQueryEntries)
-    this.plugin.taskSourceRegistry.register(phase.taskSourceId, taskSource)
-    const queueItems = taskSource.getQueue()
+    const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
+    const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
 
     // Queue Panel
     const queueEl = this.containerEl.createDiv({ cls: 'pomodoro-queue' })
@@ -191,6 +178,42 @@ export class PomodoroTimerView extends BasesView {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
       })
     }
+  }
+
+  /**
+   * Registers a TaskSource for every phase in `viewGraph` that has a taskSourceId, not just
+   * whichever phase happens to be currently active — otherwise a not-currently-rendered phase's
+   * source is stale or missing entirely (flow-gu1.29; needed by e.g. flow-6ed's proposed
+   * queueExhausted TransitionCondition, which can ask about a phase other than the active one).
+   */
+  private registerTaskSources(viewGraph: PhaseGraph): void {
+    const entries = this.data?.data ?? []
+    for (const phase of viewGraph.phases) {
+      if (phase.taskSourceId !== null) {
+        this.plugin.taskSourceRegistry.register(phase.taskSourceId, this.buildTaskSource(phase, entries))
+      }
+    }
+  }
+
+  private buildTaskSource(phase: Phase, entries: readonly BasesEntry[]) {
+    const isFocus = phase.kind === FOCUS_PHASE_KIND
+    const propId = (isFocus ? this.config?.getAsPropertyId('focusProperty') : this.config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
+    const rawTargetVal = isFocus ? this.config?.get('focusValue') : this.config?.get('breakValue')
+    const targetValFallback = isFocus ? 'work' : 'break'
+    const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
+
+    const filteredEntries = entries.filter((entry) => {
+      const valObj = entry.getValue(propId)
+      const valStr = valObj ? valObj.toString() : ''
+      return valStr.toLowerCase() === targetVal.toLowerCase()
+    })
+
+    const baseQueryEntries: BaseQueryEntry[] = filteredEntries.map(entry => ({
+      path: entry.file.path,
+      basename: entry.file.basename,
+      frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
+    }))
+    return createBaseQuerySource(baseQueryEntries)
   }
 
   private getConfiguredRoutineFilePath(): string | null {

@@ -1,6 +1,7 @@
 import { Temporal } from 'temporal-polyfill'
 import { PhaseGraphSchema } from '../phase/phase-graph'
 import type { PhaseGraph } from '../phase/phase-graph'
+import type { Phase } from '../phase/phase'
 
 /**
  * Why a routine file's JSON block failed to become a PhaseGraph. `issues` is
@@ -142,10 +143,29 @@ function convertPhaseList(phases: readonly unknown[]): PhaseListConversionResult
   )
 }
 
+/** completePhase (src/timer/reducer.ts) has no execution path for these yet — see flow-gu1.25. */
+function unimplementedPolicyKindOf(phase: Phase): string | null {
+  const kind = phase.completionPolicy?.kind
+  return kind === 'queueCycle' || kind === 'futureDate' ? kind : null
+}
+
+/** Rejects at load time rather than letting completePhase throw on every tick once the phase is reached. */
+function rejectUnimplementedPolicies(graph: PhaseGraph): RoutineParseResult {
+  const phase = graph.phases.find(p => unimplementedPolicyKindOf(p) !== null)
+  return phase === undefined
+    ? { success: true, graph }
+    : {
+        success: false,
+        error: {
+          message: `Phase "${phase.id}" has completionPolicy "${unimplementedPolicyKindOf(phase)}", which the engine doesn't execute yet.`,
+        },
+      }
+}
+
 function runSchema(converted: unknown): RoutineParseResult {
   const schemaResult = PhaseGraphSchema.safeParse(converted)
   return schemaResult.success
-    ? { success: true, graph: schemaResult.data }
+    ? rejectUnimplementedPolicies(schemaResult.data)
     : {
         success: false,
         error: {
@@ -179,9 +199,11 @@ function parseExtractedJson(json: string): RoutineParseResult {
  * Parses a routine file's raw note content into a PhaseGraph: extracts the
  * single fenced JSON block, parses it, converts ISO 8601 duration strings at
  * `phases[].duration` and `phases[].completionPolicy.after` (futureDate only)
- * to Temporal.Duration, then validates via PhaseGraphSchema unchanged. Never
- * throws — every failure path returns a RoutineParseError (see design.md
- * decisions 3-4).
+ * to Temporal.Duration, then validates via PhaseGraphSchema unchanged. Also
+ * rejects `completionPolicy.kind: 'queueCycle' | 'futureDate'` — schema-valid
+ * but not yet executed by completePhase (flow-gu1.25) — so that gap surfaces
+ * once here rather than as a per-tick runtime throw. Never throws — every
+ * failure path returns a RoutineParseError (see design.md decisions 3-4).
  */
 export function parseRoutineFile(content: string): RoutineParseResult {
   const blockResult = extractJsonBlock(content)

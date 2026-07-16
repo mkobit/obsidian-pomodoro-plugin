@@ -21,7 +21,9 @@ const validPhaseGraph = {
       onExit: null,
     },
   ],
-  transitions: [],
+  // Self-loop: a real single-phase routine still needs a way out, or checkPhaseGraphIntegrity's
+  // "reachable phase with no outgoing transitions" check (flow-gu1.31) rejects it.
+  transitions: [{ fromPhaseId: 'turn', toPhaseId: 'turn', condition: { kind: 'always' } }],
 }
 
 function routineFile(graph: unknown): string {
@@ -98,6 +100,37 @@ describe('parseRoutineFile', () => {
     expect(result.success).toBe(false)
     expect(result.success === false && result.error.issues && result.error.issues.length > 0).toBe(true)
     expect(result.success === false && result.error.issues?.[0]?.path).toEqual(['phases'])
+  })
+
+  test('a transition referencing a nonexistent phase id fails referential-integrity validation', () => {
+    const graph = {
+      ...validPhaseGraph,
+      transitions: [{ fromPhaseId: 'turn', toPhaseId: 'ghost', condition: { kind: 'always' } }],
+    }
+
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error.message).toContain('referential-integrity')
+    expect(result.success === false && result.error.issues?.[0]?.message).toContain('"ghost"')
+  })
+
+  test('a duplicated phase id fails referential-integrity validation', () => {
+    const graph = { ...validPhaseGraph, phases: [validPhaseGraph.phases[0], validPhaseGraph.phases[0]] }
+
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error.issues?.[0]?.message).toBe('Phase id "turn" is declared more than once.')
+  })
+
+  test('a reachable phase with no outgoing transitions fails referential-integrity validation', () => {
+    const graph = { ...validPhaseGraph, transitions: [] }
+
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error.issues?.[0]?.message).toContain('no outgoing transitions')
   })
 
   test('a note body with zero fenced JSON blocks fails with a RoutineParseError', () => {

@@ -24,7 +24,9 @@ const focusRoutine = {
       onExit: null,
     },
   ],
-  transitions: [],
+  // Self-loop: a real single-phase routine still needs a way out, or checkPhaseGraphIntegrity's
+  // "reachable phase with no outgoing transitions" check (flow-gu1.31) rejects it.
+  transitions: [{ fromPhaseId: 'focus', toPhaseId: 'focus', condition: { kind: 'always' } }],
 }
 
 function routineFile(graph: unknown): string {

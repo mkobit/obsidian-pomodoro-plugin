@@ -1,5 +1,5 @@
 import { Temporal } from 'temporal-polyfill'
-import { PhaseGraphSchema } from '../phase/phase-graph'
+import { PhaseGraphSchema, checkPhaseGraphIntegrity } from '../phase/phase-graph'
 import type { PhaseGraph } from '../phase/phase-graph'
 import type { Phase } from '../phase/phase'
 
@@ -162,10 +162,29 @@ function rejectUnimplementedPolicies(graph: PhaseGraph): RoutineParseResult {
       }
 }
 
+/** Only reached once the prior step succeeded — passes its failure through untouched otherwise. */
+function andThenRejectUnimplementedPolicies(result: RoutineParseResult): RoutineParseResult {
+  return result.success ? rejectUnimplementedPolicies(result.graph) : result
+}
+
+/** See checkPhaseGraphIntegrity's own doc comment for why this lives here rather than on PhaseGraphSchema itself. */
+function rejectIntegrityIssues(graph: PhaseGraph): RoutineParseResult {
+  const issues = checkPhaseGraphIntegrity(graph)
+  return issues.length === 0
+    ? { success: true, graph }
+    : {
+        success: false,
+        error: {
+          message: 'Routine file failed PhaseGraph referential-integrity validation.',
+          issues: issues.map(issue => ({ path: [], message: issue.message })),
+        },
+      }
+}
+
 function runSchema(converted: unknown): RoutineParseResult {
   const schemaResult = PhaseGraphSchema.safeParse(converted)
   return schemaResult.success
-    ? rejectUnimplementedPolicies(schemaResult.data)
+    ? andThenRejectUnimplementedPolicies(rejectIntegrityIssues(schemaResult.data))
     : {
         success: false,
         error: {
@@ -200,10 +219,14 @@ function parseExtractedJson(json: string): RoutineParseResult {
  * single fenced JSON block, parses it, converts ISO 8601 duration strings at
  * `phases[].duration` and `phases[].completionPolicy.after` (futureDate only)
  * to Temporal.Duration, then validates via PhaseGraphSchema unchanged. Also
- * rejects `completionPolicy.kind: 'queueCycle' | 'futureDate'` — schema-valid
- * but not yet executed by completePhase (flow-gu1.25) — so that gap surfaces
- * once here rather than as a per-tick runtime throw. Never throws — every
- * failure path returns a RoutineParseError (see design.md decisions 3-4).
+ * rejects graphs that are schema-valid but referentially broken — duplicate
+ * phase ids, dangling transition references, or a reachable phase with no
+ * (or no unconditional) way out (flow-gu1.31, see checkPhaseGraphIntegrity)
+ * — and `completionPolicy.kind: 'queueCycle' | 'futureDate'`, schema-valid
+ * but not yet executed by completePhase (flow-gu1.25). Both gaps surface
+ * once here rather than as a runtime throw reached mid-session. Never
+ * throws — every failure path returns a RoutineParseError (see design.md
+ * decisions 3-4).
  */
 export function parseRoutineFile(content: string): RoutineParseResult {
   const blockResult = extractJsonBlock(content)

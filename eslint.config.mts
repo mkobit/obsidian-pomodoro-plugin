@@ -341,6 +341,7 @@ export default tseslint.config(
       'functional/no-let': 'off', // Allow let in Playwright e2e tests
       '@typescript-eslint/no-non-null-assertion': 'off', // Allow non-null assertions in tests
       '@typescript-eslint/no-implied-eval': 'off', // evaluateObsidian uses new Function() to serialize/deserialize test fns
+      'obsidianmd/prefer-window-timers': 'off', // Node.js process code, not Obsidian renderer code -- `window` doesn't exist here
     },
   },
 

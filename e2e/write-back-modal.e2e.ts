@@ -26,8 +26,18 @@ function dispatchAction(page: Page, action: EngineAction): Promise<unknown> {
  * write-back hook, whose returned promise doesn't resolve until this test
  * dismisses the modal, so awaiting it here would deadlock the test against
  * itself.
+ *
+ * Dispatches 'pause' before the loop so the plugin's real TimerTicker
+ * (window.setInterval(..., 1000), running the whole time status is
+ * 'running') stops for the loop's duration -- otherwise a real wall-clock
+ * tick can land on one of the loop's AWAITED dispatches instead of the
+ * deliberately-unawaited final one, hanging this call until Playwright's
+ * test timeout (flow-gu1.39). The reducer's 'tick' case only reads
+ * `remaining`, not `status`, so simulated ticks still decrement normally
+ * while paused.
  */
 async function completeFocusPhase(page: Page): Promise<void> {
+  await dispatchAction(page, { type: 'pause' })
   await evaluateObsidian(page, async (app, args: { pluginId: typeof PLUGIN_ID }) => {
     const store = app.plugins.plugins[args.pluginId]!.store
     const remainingSeconds = store.getState().remaining?.total({ unit: 'seconds' }) ?? 0

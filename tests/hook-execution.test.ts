@@ -129,7 +129,7 @@ describe('EngineStore hook firing', () => {
       },
     })
     const graph = buildGraph({ focus: { onExit: hookRef('exit') }, break: { onEnter: hookRef('enter') } })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -157,7 +157,7 @@ describe('EngineStore hook firing', () => {
         onExit: hookRef('exit'),
       },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
     await store.dispatch({ type: 'start' })
     await store.dispatch({ type: 'tick' }) // 1s -> 0s, phase still running
     tracker.reset()
@@ -188,7 +188,7 @@ describe('EngineStore hook firing', () => {
       focus: { durationSeconds: 1, onComplete: hookRef('complete'), onExit: hookRef('exit') },
       break: { onEnter: hookRef('enter') },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
     await store.dispatch({ type: 'start' })
     await store.dispatch({ type: 'tick' }) // 1s -> 0s, phase still running
     tracker.reset()
@@ -218,7 +218,7 @@ describe('EngineStore hook firing', () => {
         onExit: hookRef('exit'),
       },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
     await store.dispatch({ type: 'start' })
     tracker.reset()
 
@@ -248,7 +248,7 @@ describe('EngineStore hook firing', () => {
       focus: { onComplete: hookRef('complete'), onExit: hookRef('exit') },
       break: { onEnter: hookRef('enter') },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
     await store.dispatch({ type: 'start' })
     tracker.reset()
 
@@ -288,7 +288,7 @@ describe('EngineStore hook firing', () => {
       },
       break: { onEnter: hookRef('enter') },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
     await store.dispatch({ type: 'start' })
     await store.dispatch({ type: 'tick' }) // 1s -> 0s
     await store.dispatch({ type: 'tick' }) // 0s -> halts at 'completed'
@@ -322,7 +322,7 @@ describe('EngineStore hook firing', () => {
         focus: { onSkip: hookRef('skip'), onExit: hookRef('exit') },
         break: { onEnter: hookRef('enter') },
       })
-      const store = new EngineStore(graph, registry, createFakePort())
+      const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
       await store.dispatch({ type: 'start' })
       if (status === 'paused') {
         await store.dispatch({ type: 'pause' })
@@ -339,7 +339,7 @@ describe('EngineStore hook firing', () => {
   test('pause fires no hook events', async () => {
     const resolveSpy = mock((_name: string) => undefined)
     const graph = buildGraph({ focus: { onEnter: hookRef('enter'), onExit: hookRef('exit') } })
-    const store = new EngineStore(graph, { resolve: resolveSpy }, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: { resolve: resolveSpy }, port: createFakePort() })
     await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'pause' })
@@ -354,7 +354,7 @@ describe('EngineStore hook firing', () => {
       const hookSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
       const registry = createFakeRegistry({ exit: hookSpy })
       const graph = buildGraph({ focus: { onExit: hookRef('exit') } })
-      const store = new EngineStore(graph, registry, createFakePort())
+      const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
       await store.dispatch({ type: 'start' })
       if (status === 'paused') {
         await store.dispatch({ type: 'pause' })
@@ -373,7 +373,7 @@ describe('EngineStore hook firing', () => {
     async (status) => {
       const resolveSpy = mock((_name: string) => undefined)
       const graph = buildGraph({ focus: { completionPolicy: { kind: 'manualClear' }, onExit: hookRef('exit') } })
-      const store = new EngineStore(graph, { resolve: resolveSpy }, createFakePort())
+      const store = new EngineStore(graph, { hookRegistry: { resolve: resolveSpy }, port: createFakePort() })
       if (status === 'completed') {
         await store.dispatch({ type: 'start' })
         await store.dispatch({ type: 'finish-phase' })
@@ -390,7 +390,7 @@ describe('EngineStore hook firing', () => {
   test('a tick with remaining time left fires no hook events', async () => {
     const resolveSpy = mock((_name: string) => undefined)
     const graph = buildGraph({ focus: { onEnter: hookRef('enter'), onExit: hookRef('exit') } })
-    const store = new EngineStore(graph, { resolve: resolveSpy }, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: { resolve: resolveSpy }, port: createFakePort() })
     await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'tick' })
@@ -403,7 +403,7 @@ describe('EngineStore hook firing', () => {
     const hookSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
     const registry = createFakeRegistry({ enter: hookSpy })
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -415,7 +415,7 @@ describe('EngineStore hook firing', () => {
   test('a phase with no hook declared for the firing event calls resolve for nothing', async () => {
     const resolveSpy = mock((_name: string) => undefined)
     const graph = buildGraph()
-    const store = new EngineStore(graph, { resolve: resolveSpy }, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: { resolve: resolveSpy }, port: createFakePort() })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -429,7 +429,7 @@ describe('EngineStore hook firing', () => {
       focus: { onExit: hookRef('missing') },
       break: { onEnter: hookRef('enter') },
     })
-    const store = new EngineStore(graph, registry, createFakePort())
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -441,7 +441,7 @@ describe('EngineStore hook firing', () => {
     const registry = createFakeRegistry({ enter: async () => [appendMutation] })
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
     const port = createFakePort()
-    const store = new EngineStore(graph, registry, port)
+    const store = new EngineStore(graph, { hookRegistry: registry, port })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -470,7 +470,7 @@ describe('EngineStore hook firing', () => {
       break: { onEnter: hookRef('enter') },
     })
     const port = createFakePort()
-    const store = new EngineStore(graph, registry, port)
+    const store = new EngineStore(graph, { hookRegistry: registry, port })
 
     const dispatchPromise = store.dispatch({ type: 'advance-phase' })
     await Promise.resolve() // let the dispatch loop reach and suspend at `await hook(...)`
@@ -497,7 +497,7 @@ describe('EngineStore hook firing', () => {
       break: { onEnter: hookRef('enter') },
     })
     const port = createFakePort({ appendText: new Error('vault write failed') })
-    const store = new EngineStore(graph, registry, port)
+    const store = new EngineStore(graph, { hookRegistry: registry, port })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -529,7 +529,7 @@ describe('EngineStore hook firing', () => {
       break: { onEnter: hookRef('enter') },
     })
     const port = createFakePort({ appendText: new Error('boom') })
-    const store = new EngineStore(graph, registry, port)
+    const store = new EngineStore(graph, { hookRegistry: registry, port })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 

@@ -7,6 +7,7 @@ import type { PredicateRegistry } from '../domain/hook/predicate'
 import { PhaseInstanceIdSchema, SessionIdSchema } from '../domain/session/session'
 import type { PhaseInstance, PhaseInstanceEndReason, Session } from '../domain/session/session'
 import { findPhaseById, resolveNextPhaseId } from './phase-graph'
+import type { EngineDeps } from './engine-deps'
 
 export type EngineAction
   = | { type: 'start', filePath?: string }
@@ -43,8 +44,9 @@ export function engineReducer(
   state: EngineState,
   action: EngineAction,
   graph: PhaseGraph,
-  predicateRegistry?: PredicateRegistry,
+  deps: EngineDeps = {},
 ): EngineState {
+  const { predicateRegistry } = deps
   switch (action.type) {
     case 'start':
       return {

@@ -1,7 +1,15 @@
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
+import { generateVault, resolveVaultSeed } from './vault'
+import type { NoteDefinition } from './vault'
 
 const PLUGIN_ID = 'obsidian-pomodoro-plugin'
+
+/** Mirrors createBaseQuerySource's priority read (src/timer/base-query-task-source.ts) -- missing/non-numeric priority sorts as 0. */
+function pomodoroPriorityOf(note: NoteDefinition): number {
+  const value = note.frontmatter['pomodoro-priority']
+  return typeof value === 'number' ? value : 0
+}
 
 test.describe('Pomodoro Timer View', () => {
   test('registers bases view and can start a timer', async ({ obsidianPage: { page } }) => {
@@ -108,16 +116,17 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
     const queue = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-queue')
     await expect(queue.locator('h3')).toHaveText('Work queue')
 
-    // e2e/vault/generator.ts's generatePomodoroNotes(DEFAULT_VAULT_SEED) is deterministic --
-    // these five notes' pomodoro-priority values sort ascending as below (one has no
-    // pomodoro-priority at all, exercising BaseQuerySource's "missing sorts as 0" default).
-    // displayName is the file's basename (indexedPath's slugified filename), not the note's title.
-    await expect(queue.locator('li button')).toHaveText([
-      '04-draft-release-notes',
-      '01-refactor-auth-module',
-      '05-fix-flaky-test',
-      '02-review-pr-feedback',
-      '03-update-onboarding-docs',
-    ], { timeout: 20_000 })
+    // Derived from the same generateVault(resolveVaultSeed()) the vault was built from, rather than
+    // duplicating its output as literals here (a VAULT_SEED override would otherwise change the
+    // vault's contents without this assertion following along). Sort mirrors
+    // createBaseQuerySource (src/timer/base-query-task-source.ts): ascending by pomodoro-priority,
+    // missing priority sorts as 0. displayName is the file's basename (indexedPath's slugified
+    // filename), not the note's title.
+    const expectedDisplayNames = generateVault(resolveVaultSeed())
+      .filter(note => note.relativePath.dir === 'pomodoro')
+      .toSorted((a, b) => pomodoroPriorityOf(a) - pomodoroPriorityOf(b))
+      .map(note => note.relativePath.name)
+
+    await expect(queue.locator('li button')).toHaveText(expectedDisplayNames, { timeout: 20_000 })
   })
 })

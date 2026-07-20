@@ -20,6 +20,12 @@ export type EngineStatus = z.infer<typeof EngineStatusSchema>
  * break every 4th cycle) — it's derived at runtime by counting phase exits,
  * not part of the static PhaseGraph config.
  *
+ * `queueExhausted` backs TransitionCondition's 'queueExhausted' case, the
+ * same way — the reducer itself never reads a TaskSourceRegistry (it stays
+ * pure), so EngineStore snapshots the current phase's queue-empty state into
+ * this field before each dispatch (see EngineStore.dispatch), and
+ * resolveNextPhaseId just reads it back off state, same as phaseVisitCounts.
+ *
  * Deliberately does NOT embed a `Session`/`PhaseInstance` history yet — that
  * bookkeeping (itemsTouched, mutationsApplied, endReason) only means
  * something once Hook/CompletionPolicy execution and a FileMutation-apply
@@ -35,4 +41,6 @@ export interface EngineState {
   /** The file path of the active task, if any. */
   readonly activeFilePath: string | null
   readonly phaseVisitCounts: Readonly<Record<PhaseId, number>>
+  /** Whether the current phase's TaskSource queue is known to be empty. False when there's no taskSourceId, or its TaskSource isn't registered yet. */
+  readonly queueExhausted: boolean
 }

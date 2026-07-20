@@ -18,6 +18,7 @@ export type EngineAction
     | { type: 'finish-phase' }
     | { type: 'advance-phase' }
     | { type: 'set-active-file', filePath: string | null }
+    | { type: 'set-queue-exhausted', exhausted: boolean }
 
 /**
  * Build the initial stopped state for a given phase graph, at its first
@@ -33,6 +34,7 @@ export function initialEngineState(graph: PhaseGraph): EngineState {
     remaining: startPhase.duration,
     activeFilePath: null,
     phaseVisitCounts: {},
+    queueExhausted: false,
   }
 }
 
@@ -76,6 +78,10 @@ export function engineReducer(
       return action.filePath === state.activeFilePath
         ? state
         : { ...state, activeFilePath: action.filePath }
+    case 'set-queue-exhausted':
+      return action.exhausted === state.queueExhausted
+        ? state
+        : { ...state, queueExhausted: action.exhausted }
   }
 }
 
@@ -221,7 +227,7 @@ function advancePhase(state: EngineState, graph: PhaseGraph, predicateRegistry: 
     ...state.phaseVisitCounts,
     [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
   }
-  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry)
+  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
   const nextPhase = requirePhaseById(graph, nextPhaseId)
   return {
     ...state,

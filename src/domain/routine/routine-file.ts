@@ -2,6 +2,8 @@ import { Temporal } from 'temporal-polyfill'
 import { PhaseGraphSchema, checkPhaseGraphIntegrity } from '../phase/phase-graph'
 import type { PhaseGraph } from '../phase/phase-graph'
 import type { Phase } from '../phase/phase'
+import { map, andThen } from '../result'
+import type { Result } from '../result'
 
 /**
  * Why a routine file's JSON block failed to become a PhaseGraph. `issues` is
@@ -23,25 +25,9 @@ export type RoutineParseResult
   = | { readonly success: true, readonly graph: PhaseGraph }
     | { readonly success: false, readonly error: RoutineParseError }
 
-type FieldConversionResult
-  = | { readonly success: true, readonly value: unknown }
-    | { readonly success: false, readonly error: RoutineParseError }
-
-type PhaseConversionResult
-  = | { readonly success: true, readonly phase: unknown }
-    | { readonly success: false, readonly error: RoutineParseError }
-
-type PhaseListConversionResult
-  = | { readonly success: true, readonly phases: readonly unknown[] }
-    | { readonly success: false, readonly error: RoutineParseError }
-
 type JsonParseResult
   = | { readonly success: true, readonly value: unknown }
     | { readonly success: false }
-
-type BlockExtractionResult
-  = | { readonly success: true, readonly json: string }
-    | { readonly success: false, readonly error: RoutineParseError }
 
 const FENCED_JSON_BLOCK = /```json[ \t]*\r?\n([\s\S]*?)\r?\n?```/gi
 
@@ -67,10 +53,10 @@ function tryParseJson(text: string): JsonParseResult {
   }
 }
 
-function extractJsonBlock(content: string): BlockExtractionResult {
+function extractJsonBlock(content: string): Result<string, RoutineParseError> {
   const matches = [...content.matchAll(FENCED_JSON_BLOCK)]
   return matches.length === 1
-    ? { success: true, json: matches[0]?.[1] ?? '' }
+    ? { success: true, value: matches[0]?.[1] ?? '' }
     : {
         success: false,
         error: {
@@ -81,7 +67,7 @@ function extractJsonBlock(content: string): BlockExtractionResult {
       }
 }
 
-function convertDurationString(iso: string): FieldConversionResult {
+function convertDurationString(iso: string): Result<unknown, RoutineParseError> {
   const duration = tryParseDuration(iso)
   return duration === null
     ? { success: false, error: { message: `Invalid ISO 8601 duration: "${iso}"` } }
@@ -89,21 +75,18 @@ function convertDurationString(iso: string): FieldConversionResult {
 }
 
 /** Leaves non-string values untouched — schema validation rejects the wrong shape on its own. */
-function convertDurationField(value: unknown): FieldConversionResult {
+function convertDurationField(value: unknown): Result<unknown, RoutineParseError> {
   return typeof value !== 'string'
     ? { success: true, value }
     : convertDurationString(value)
 }
 
-function convertFutureDatePolicy(policy: Record<string, unknown>): FieldConversionResult {
-  const afterResult = convertDurationField(policy.after)
-  return !afterResult.success
-    ? afterResult
-    : { success: true, value: { ...policy, after: afterResult.value } }
+function convertFutureDatePolicy(policy: Record<string, unknown>): Result<unknown, RoutineParseError> {
+  return map(convertDurationField(policy.after), after => ({ ...policy, after }))
 }
 
 /** Only `{ kind: 'futureDate', after: <ISO string> }` carries a duration field to convert. */
-function convertCompletionPolicy(value: unknown): FieldConversionResult {
+function convertCompletionPolicy(value: unknown): Result<unknown, RoutineParseError> {
   return !isRecord(value) || value.kind !== 'futureDate'
     ? { success: true, value }
     : convertFutureDatePolicy(value)
@@ -111,35 +94,23 @@ function convertCompletionPolicy(value: unknown): FieldConversionResult {
 
 function mergePhaseFields(
   phase: Record<string, unknown>,
-  durationResult: FieldConversionResult,
-  policyResult: FieldConversionResult,
-): PhaseConversionResult {
-  return !durationResult.success
-    ? durationResult
-    : !policyResult.success
-        ? policyResult
-        : { success: true, phase: { ...phase, duration: durationResult.value, completionPolicy: policyResult.value } }
+  durationResult: Result<unknown, RoutineParseError>,
+  policyResult: Result<unknown, RoutineParseError>,
+): Result<unknown, RoutineParseError> {
+  return andThen(durationResult, duration =>
+    map(policyResult, completionPolicy => ({ ...phase, duration, completionPolicy })))
 }
 
-function convertPhase(phase: unknown): PhaseConversionResult {
+function convertPhase(phase: unknown): Result<unknown, RoutineParseError> {
   return !isRecord(phase)
-    ? { success: true, phase }
+    ? { success: true, value: phase }
     : mergePhaseFields(phase, convertDurationField(phase.duration), convertCompletionPolicy(phase.completionPolicy))
 }
 
-function mergeConvertedPhase(
-  acc: { readonly success: true, readonly phases: readonly unknown[] },
-  phaseResult: PhaseConversionResult,
-): PhaseListConversionResult {
-  return !phaseResult.success
-    ? phaseResult
-    : { success: true, phases: [...acc.phases, phaseResult.phase] }
-}
-
-function convertPhaseList(phases: readonly unknown[]): PhaseListConversionResult {
-  return phases.reduce<PhaseListConversionResult>(
-    (acc, phase) => (!acc.success ? acc : mergeConvertedPhase(acc, convertPhase(phase))),
-    { success: true, phases: [] },
+function convertPhaseList(phases: readonly unknown[]): Result<readonly unknown[], RoutineParseError> {
+  return phases.reduce<Result<readonly unknown[], RoutineParseError>>(
+    (acc, phase) => andThen(acc, converted => map(convertPhase(phase), value => [...converted, value])),
+    { success: true, value: [] },
   )
 }
 
@@ -202,7 +173,7 @@ function validateConverted(parsed: unknown): RoutineParseResult {
     ? phasesResult
     : runSchema(
         isRecord(parsed) && phasesResult !== null
-          ? { ...parsed, phases: phasesResult.phases }
+          ? { ...parsed, phases: phasesResult.value }
           : parsed,
       )
 }
@@ -230,5 +201,5 @@ function parseExtractedJson(json: string): RoutineParseResult {
  */
 export function parseRoutineFile(content: string): RoutineParseResult {
   const blockResult = extractJsonBlock(content)
-  return !blockResult.success ? blockResult : parseExtractedJson(blockResult.json)
+  return !blockResult.success ? blockResult : parseExtractedJson(blockResult.value)
 }

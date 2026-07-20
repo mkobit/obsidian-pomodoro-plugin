@@ -88,6 +88,19 @@ describe('engineReducer', () => {
     expect(next.activeFilePath).toBeNull()
   })
 
+  test('set-queue-exhausted updates queueExhausted without touching status', () => {
+    const state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
+    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true }, testGraph)
+    expect(next.queueExhausted).toBe(true)
+    expect(next.status).toBe('running')
+  })
+
+  test('set-queue-exhausted is a no-op when the value is unchanged', () => {
+    const state: EngineState = initialEngineState(testGraph)
+    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: false }, testGraph)
+    expect(next).toBe(state)
+  })
+
   test('pause transitions running to paused', () => {
     const state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
     const next = engineReducer(state, { type: 'pause' }, testGraph)
@@ -108,6 +121,7 @@ describe('engineReducer', () => {
       remaining: Temporal.Duration.from({ seconds: 42 }),
       activeFilePath: 'task.md',
       phaseVisitCounts: { [focusId]: 1 },
+      queueExhausted: false,
     }
     const next = engineReducer(running, { type: 'stop' }, testGraph)
     expect(next.status).toBe('stopped')
@@ -412,6 +426,42 @@ describe('engineReducer', () => {
       expect(() => engineReducer(state, { type: 'advance-phase' }, onlyCustomGraph, { predicateRegistry: registryResolvingTo(false) })).toThrow(
         'PhaseGraph "only-custom" has no eligible transition from phase "weights"',
       )
+    })
+  })
+
+  describe('queueExhausted TransitionCondition resolution', () => {
+    const doneId = PhaseIdSchema.parse('done')
+    const setId = PhaseIdSchema.parse('set')
+
+    const queueExhaustedGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'queue-exhausted',
+      name: 'Queue exhausted graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'set', label: 'Set', kind: 'set', duration: null, logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'done', label: 'Done', kind: 'done', duration: null, logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'set', toPhaseId: 'done', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'set', toPhaseId: 'set', condition: { kind: 'always' } },
+      ],
+    })
+
+    test('state.queueExhausted true satisfies the queueExhausted transition', () => {
+      const state: EngineState = { ...initialEngineState(queueExhaustedGraph), status: 'running', queueExhausted: true }
+      const next = engineReducer(state, { type: 'advance-phase' }, queueExhaustedGraph)
+      expect(next.currentPhaseId).toBe(doneId)
+    })
+
+    test('state.queueExhausted false falls through to the next candidate', () => {
+      const state: EngineState = { ...initialEngineState(queueExhaustedGraph), status: 'running', queueExhausted: false }
+      const next = engineReducer(state, { type: 'advance-phase' }, queueExhaustedGraph)
+      expect(next.currentPhaseId).toBe(setId)
+    })
+
+    test('queueExhausted defaults to false from initialEngineState, so a fresh graph loops rather than skipping to done', () => {
+      const state: EngineState = { ...initialEngineState(queueExhaustedGraph), status: 'running' }
+      const next = engineReducer(state, { type: 'advance-phase' }, queueExhaustedGraph)
+      expect(next.currentPhaseId).toBe(setId)
     })
   })
 })

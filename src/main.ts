@@ -46,7 +46,7 @@ export default class PomodoroPlugin extends Plugin {
     }
     // No custom TransitionCondition predicate registered anywhere yet — see flow-b74/flow-gu1.10.
     const predicateRegistry: PredicateRegistry = { resolve: () => undefined }
-    this.store = new EngineStore(POMODORO_PHASE_GRAPH, { hookRegistry, port, predicateRegistry })
+    this.store = new EngineStore(POMODORO_PHASE_GRAPH, { hookRegistry, port, predicateRegistry, taskSourceRegistry: this.taskSourceRegistry })
     this.ticker = new TimerTicker((action) => {
       void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
         // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6

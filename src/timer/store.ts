@@ -8,6 +8,7 @@ import type { HookReference } from '../domain/hook/hook-reference'
 import { applyMutations } from '../domain/mutation/apply-mutations'
 import type { ApplyMutationsResult } from '../domain/mutation/apply-mutations'
 import type { EngineDeps } from './engine-deps'
+import { findPhaseById } from './phase-graph'
 
 /** Result of resolving, invoking, and applying one fired hook event's mutations. */
 export interface HookEventApplication {
@@ -36,7 +37,12 @@ function hookReferenceFor(phase: Phase, event: HookEvent): HookReference | null 
  * makes hook firing a no-op — existing/test construction sites don't need
  * to supply fakes they don't care about. Omitting predicateRegistry treats
  * every 'custom' TransitionCondition as unsatisfied, rather than requiring
- * a fake for graphs that don't use one.
+ * a fake for graphs that don't use one. Supplying taskSourceRegistry makes
+ * dispatch snapshot the current phase's queue-empty state into
+ * state.queueExhausted before evaluating the dispatched action, so a
+ * 'queueExhausted' TransitionCondition reads a fresh value at the moment a
+ * transition is resolved; omitting it leaves queueExhausted permanently
+ * false (same "unresolved => unsatisfied" precedent as predicateRegistry).
  */
 export class EngineStore {
   private state: EngineState
@@ -62,14 +68,11 @@ export class EngineStore {
   }
 
   public async dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
+    this.syncQueueExhausted()
+
     const prevState = this.state
     const nextState = engineReducer(prevState, action, this.graph, this.deps)
-    if (nextState !== this.state) {
-      this.state = nextState
-      for (const listener of this.listeners) {
-        listener(this.state)
-      }
-    }
+    this.applyState(nextState)
 
     const { hookRegistry, port } = this.deps
     if (hookRegistry === undefined || port === undefined) {
@@ -91,6 +94,35 @@ export class EngineStore {
       applications = [...applications, { event, phase, result }]
     }
     return applications
+  }
+
+  private applyState(nextState: EngineState): void {
+    if (nextState !== this.state) {
+      this.state = nextState
+      for (const listener of this.listeners) {
+        listener(this.state)
+      }
+    }
+  }
+
+  /**
+   * Snapshots the current phase's queue-empty state into state.queueExhausted, so a
+   * 'queueExhausted' TransitionCondition evaluated later in this same dispatch (via
+   * advancePhase -> resolveNextPhaseId) reads a value synced to right now, rather than
+   * whatever was last set by a prior dispatch. A no-op when taskSourceRegistry isn't supplied;
+   * reads back as "not exhausted" when the current phase has no taskSourceId, or its TaskSource
+   * isn't registered yet — same "unknown => don't fire the exceptional branch" precedent as
+   * an unresolved 'custom' predicate.
+   */
+  private syncQueueExhausted(): void {
+    const { taskSourceRegistry } = this.deps
+    if (taskSourceRegistry === undefined) {
+      return
+    }
+    const phase = findPhaseById(this.graph, this.state.currentPhaseId)
+    const source = phase !== undefined && phase.taskSourceId !== null ? taskSourceRegistry.resolve(phase.taskSourceId) : undefined
+    const exhausted = source !== undefined && source.getQueue().length === 0
+    this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted }, this.graph, this.deps))
   }
 
   /**

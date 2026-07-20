@@ -33,23 +33,26 @@ export function findPhaseById(graph: PhaseGraph, id: PhaseId): Phase | undefined
  * Resolve which phase to enter next from `fromPhaseId`, evaluating
  * transitions in declared array order and taking the first whose condition
  * is satisfied — so a graph author puts exception branches (e.g. everyNth,
- * custom) before the fallback 'always' branch.
+ * custom, queueExhausted) before the fallback 'always' branch.
  *
  * Throws if no outgoing transition matches (a misconfigured graph). A
  * 'custom' condition whose predicate doesn't resolve via `predicateRegistry`
  * (or when no registry is supplied at all) is treated as not satisfied,
  * matching Hook's "unresolved name => no-op" precedent, rather than
- * throwing.
+ * throwing. `queueExhausted` defaults to false for the same reason — a
+ * caller that doesn't track it (e.g. a direct unit test) shouldn't have that
+ * branch fire unexpectedly.
  */
 export function resolveNextPhaseId(
   graph: PhaseGraph,
   fromPhaseId: PhaseId,
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry?: PredicateRegistry,
+  queueExhausted = false,
 ): PhaseId {
   const candidates = graph.transitions.filter(transition => transition.fromPhaseId === fromPhaseId)
   for (const transition of candidates) {
-    if (isConditionSatisfied(transition.condition, fromPhaseId, visitCounts, predicateRegistry)) {
+    if (isConditionSatisfied(transition.condition, fromPhaseId, visitCounts, predicateRegistry, queueExhausted)) {
       return transition.toPhaseId
     }
   }
@@ -61,6 +64,7 @@ function isConditionSatisfied(
   fromPhaseId: PhaseId,
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry: PredicateRegistry | undefined,
+  queueExhausted: boolean,
 ): boolean {
   switch (condition.kind) {
     case 'always':
@@ -71,6 +75,8 @@ function isConditionSatisfied(
       const predicate = predicateRegistry?.resolve(condition.predicate)
       return predicate !== undefined && predicate(fromPhaseId, visitCounts)
     }
+    case 'queueExhausted':
+      return queueExhausted
   }
 }
 

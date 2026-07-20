@@ -10,14 +10,16 @@ export const PhaseGraphIdSchema = z.string().min(1).brand<'PhaseGraphId'>()
 export type PhaseGraphId = z.infer<typeof PhaseGraphIdSchema>
 
 /**
- * When a transition fires. 'everyNth' needs a visit counter, but that
- * counter is runtime state (see session/engine-state.ts's phaseVisitCounts)
- * — not part of this static graph config.
+ * When a transition fires. 'everyNth' needs a visit counter, and
+ * 'queueExhausted' needs the current phase's TaskSource queue length — both
+ * are runtime state (see session/engine-state.ts's phaseVisitCounts and
+ * queueExhausted) — not part of this static graph config.
  */
 export const TransitionConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('always') }),
   z.object({ kind: z.literal('everyNth'), n: z.number().int().positive() }),
   z.object({ kind: z.literal('custom'), predicate: PredicateNameSchema }),
+  z.object({ kind: z.literal('queueExhausted') }),
 ]).readonly()
 
 export type TransitionCondition = z.infer<typeof TransitionConditionSchema>

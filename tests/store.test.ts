@@ -6,6 +6,8 @@ import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseIdSchema, PhaseSchema } from '../src/domain/phase/phase'
 import { POMODORO_PHASE_GRAPH } from '../src/timer/phase-graph'
 import { WRITE_BACK_HOOK_NAME } from '../src/timer/write-back'
+import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
+import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -40,6 +42,45 @@ function buildGraph(id: string, durationSeconds = 10): PhaseGraph {
       { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
     ],
   })
+}
+
+const exercisesTaskSourceId = TaskSourceIdSchema.parse('exercises')
+
+function buildQueueExhaustedGraph(): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'workout',
+    name: 'Workout graph',
+    phases: [
+      PhaseSchema.parse({ ...phaseDefaults, id: 'set', label: 'Set', kind: 'set', duration: null, taskSourceId: exercisesTaskSourceId, logTarget: { kind: 'activeItem' } }),
+      PhaseSchema.parse({ ...phaseDefaults, id: 'done', label: 'Done', kind: 'done', duration: null, logTarget: { kind: 'activeItem' } }),
+    ],
+    transitions: [
+      { fromPhaseId: 'set', toPhaseId: 'done', condition: { kind: 'queueExhausted' } },
+      { fromPhaseId: 'set', toPhaseId: 'set', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+function buildQueueItem(id: string): TaskQueueItem {
+  return {
+    id: TaskQueueItemIdSchema.parse(id),
+    sourcePath: `${id}.md`,
+    displayName: id,
+    cycleStatus: 'pending',
+    timeSpent: Temporal.Duration.from({ seconds: 0 }),
+    lastCycledAt: null,
+  }
+}
+
+/** A mutable TaskSourceRegistry resolving `exercisesTaskSourceId` to whatever items were last set, so a test can simulate items being worked through between dispatches. */
+function createFakeTaskSourceRegistry(initialItems: readonly TaskQueueItem[]) {
+  let items = initialItems
+  const source: TaskSource = { getQueue: () => items }
+  const registry: TaskSourceRegistry = { resolve: id => (id === exercisesTaskSourceId ? source : undefined) }
+  const setItems = (next: readonly TaskQueueItem[]) => {
+    items = next
+  }
+  return { registry, setItems }
 }
 
 describe('EngineStore', () => {
@@ -125,6 +166,53 @@ describe('EngineStore', () => {
     store.setGraph(buildGraph('b'))
 
     expect(counter.count()).toBe(1)
+  })
+})
+
+describe('EngineStore queueExhausted sync', () => {
+  test('dispatch snapshots a fresh queue-empty reading before evaluating the action, so draining the queue between dispatches changes the outcome', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('rep-1')])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('set'))
+
+    setItems([])
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('done'))
+  })
+
+  test('omitting taskSourceRegistry leaves queueExhausted false, so the queueExhausted branch never fires', async () => {
+    const store = new EngineStore(buildQueueExhaustedGraph())
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('set'))
+    expect(store.getState().queueExhausted).toBe(false)
+  })
+
+  test('a phase with no taskSourceId is never treated as exhausted, even with a registry supplied', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const noQueueGraph = PhaseGraphSchema.parse({
+      id: 'no-queue',
+      name: 'No queue graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'warmup', label: 'Warmup', kind: 'warmup', duration: null, logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'done', label: 'Done', kind: 'done', duration: null, logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'warmup', toPhaseId: 'done', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'warmup', toPhaseId: 'warmup', condition: { kind: 'always' } },
+      ],
+    })
+    const store = new EngineStore(noQueueGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
   })
 })
 

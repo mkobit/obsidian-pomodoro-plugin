@@ -3,11 +3,11 @@ import type { EngineAction } from './reducer'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import type { HookEvent, HookRegistry } from '../domain/hook/hook'
+import type { HookEvent } from '../domain/hook/hook'
 import type { HookReference } from '../domain/hook/hook-reference'
-import type { PredicateRegistry } from '../domain/hook/predicate'
 import { applyMutations } from '../domain/mutation/apply-mutations'
-import type { ApplyMutationsResult, FileMutationPort } from '../domain/mutation/apply-mutations'
+import type { ApplyMutationsResult } from '../domain/mutation/apply-mutations'
+import type { EngineDeps } from './engine-deps'
 
 /** Result of resolving, invoking, and applying one fired hook event's mutations. */
 export interface HookEventApplication {
@@ -30,28 +30,24 @@ function hookReferenceFor(phase: Phase, event: HookEvent): HookReference | null 
  * pure reducer. Notifies subscribers after each state transition.
  * Accepts a PhaseGraph via dependency injection — no hardcoded phase semantics.
  *
- * Optionally takes a HookRegistry + FileMutationPort: when both are
- * supplied, dispatch resolves and fires onEnter/onComplete/onSkip/onExit
- * hooks after each transition and applies their FileMutations. Omitting
- * either makes hook firing a no-op — existing/test construction sites don't
- * need to supply fakes they don't care about. A PredicateRegistry is
- * likewise optional — omitting it treats every 'custom' TransitionCondition
- * as unsatisfied, rather than requiring a fake for graphs that don't use one.
+ * Optionally takes an EngineDeps bag. Supplying both hookRegistry and port
+ * makes dispatch resolve and fire onEnter/onComplete/onSkip/onExit hooks
+ * after each transition and apply their FileMutations; omitting either
+ * makes hook firing a no-op — existing/test construction sites don't need
+ * to supply fakes they don't care about. Omitting predicateRegistry treats
+ * every 'custom' TransitionCondition as unsatisfied, rather than requiring
+ * a fake for graphs that don't use one.
  */
 export class EngineStore {
   private state: EngineState
   private graph: PhaseGraph
   private listeners: ((state: EngineState) => void)[] = []
-  private readonly hookRegistry: HookRegistry | undefined
-  private readonly port: FileMutationPort | undefined
-  private readonly predicateRegistry: PredicateRegistry | undefined
+  private readonly deps: EngineDeps
 
-  constructor(graph: PhaseGraph, hookRegistry?: HookRegistry, port?: FileMutationPort, predicateRegistry?: PredicateRegistry) {
+  constructor(graph: PhaseGraph, deps: EngineDeps = {}) {
     this.graph = graph
     this.state = initialEngineState(graph)
-    this.hookRegistry = hookRegistry
-    this.port = port
-    this.predicateRegistry = predicateRegistry
+    this.deps = deps
   }
 
   public getState(): EngineState {
@@ -67,7 +63,7 @@ export class EngineStore {
 
   public async dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
     const prevState = this.state
-    const nextState = engineReducer(prevState, action, this.graph, this.predicateRegistry)
+    const nextState = engineReducer(prevState, action, this.graph, this.deps)
     if (nextState !== this.state) {
       this.state = nextState
       for (const listener of this.listeners) {
@@ -75,7 +71,7 @@ export class EngineStore {
       }
     }
 
-    const { hookRegistry, port } = this
+    const { hookRegistry, port } = this.deps
     if (hookRegistry === undefined || port === undefined) {
       return []
     }

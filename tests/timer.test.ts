@@ -373,20 +373,20 @@ describe('engineReducer', () => {
 
     test('a resolvable predicate returning true satisfies the transition', () => {
       const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
-      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, registryResolvingTo(true))
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, { predicateRegistry: registryResolvingTo(true) })
       expect(next.currentPhaseId).toBe(skipToId)
     })
 
     test('a resolvable predicate returning false falls through to the next candidate', () => {
       const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
-      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, registryResolvingTo(false))
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, { predicateRegistry: registryResolvingTo(false) })
       expect(next.currentPhaseId).toBe(normalNextId)
     })
 
     test('an unresolved predicate name falls through without throwing', () => {
       const emptyRegistry: PredicateRegistry = { resolve: () => undefined }
       const state: EngineState = { ...initialEngineState(customConditionGraph), status: 'running' }
-      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, emptyRegistry)
+      const next = engineReducer(state, { type: 'advance-phase' }, customConditionGraph, { predicateRegistry: emptyRegistry })
       expect(next.currentPhaseId).toBe(normalNextId)
     })
 
@@ -409,7 +409,7 @@ describe('engineReducer', () => {
         ],
       })
       const state: EngineState = { ...initialEngineState(onlyCustomGraph), status: 'running' }
-      expect(() => engineReducer(state, { type: 'advance-phase' }, onlyCustomGraph, registryResolvingTo(false))).toThrow(
+      expect(() => engineReducer(state, { type: 'advance-phase' }, onlyCustomGraph, { predicateRegistry: registryResolvingTo(false) })).toThrow(
         'PhaseGraph "only-custom" has no eligible transition from phase "weights"',
       )
     })

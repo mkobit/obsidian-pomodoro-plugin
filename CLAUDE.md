@@ -69,6 +69,9 @@ _Add your build and test commands here_
 # npm test
 ```
 
+`bun run vault:dev` launches the provisioned Obsidian on the real display, for a human to interact with; it detaches and hands the shell back immediately.
+For agent-driven verification, use `bun run vault:dev:headless` instead -- it wraps the same launch in Xvfb so no window appears on the real desktop. Unlike `vault:dev`, it blocks until Obsidian exits (Xvfb tears down as soon as the wrapped command returns, so it can't detach) -- run it with a backgrounding tool and send SIGTERM to end it.
+
 ## Architecture Overview
 
 _Add a brief overview of your project architecture_

@@ -23,7 +23,8 @@ Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it
 | `bun run test:e2e` | Runs E2E tests using Playwright. |
 | `bun run typecheck` | Type-checks with `tsc --noEmit`. |
 | `bun run lint` | Lints with `eslint .`. |
-| `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault. |
+| `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault (real display); detaches immediately, hands the shell back. |
+| `bun run vault:dev:headless` | Same, under Xvfb -- use for agent-driven verification so no window appears on the real desktop. Blocks until Obsidian exits (required so Xvfb doesn't tear down mid-run) -- run it with a backgrounding tool and send SIGTERM to end it. |
 | `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). |
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->

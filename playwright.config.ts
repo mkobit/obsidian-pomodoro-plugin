@@ -5,7 +5,7 @@ export default defineConfig({
   testMatch: '**/*.e2e.ts',
   globalSetup: './e2e/global-setup.ts',
   timeout: 120_000,
-  retries: 1,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: [
     ['html', { open: 'never', outputFolder: 'playwright-report' }],

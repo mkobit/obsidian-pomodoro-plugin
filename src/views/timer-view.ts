@@ -1,5 +1,5 @@
 import { BasesView } from 'obsidian'
-import type { ViewOption, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
+import type { BasesOptions, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
 import type PomodoroPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
@@ -234,7 +234,7 @@ export class PomodoroTimerView extends BasesView {
     void this.plugin.store.dispatch({ type: 'start' })
   }
 
-  static getViewOptions(app: App): ViewOption[] {
+  static getViewOptions(app: App): BasesOptions[] {
     return [
       {
         key: 'focusProperty',

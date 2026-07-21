@@ -57,3 +57,5 @@
 # sync.remote: "git+ssh://git@github.com/mkobit/routine-flow.git"
 
 export.git-add: false
+sync:
+    remote: "git+ssh://git@github.com/mkobit/routine-flow.git"

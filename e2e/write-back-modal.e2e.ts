@@ -4,11 +4,11 @@ import { evaluateObsidian } from './helpers/evaluate'
 import { createNote, writeNoteToVault } from './vault'
 import type { EngineAction } from '../src/timer/reducer'
 
-const PLUGIN_ID = 'obsidian-pomodoro-plugin'
+const PLUGIN_ID = 'routine-flow'
 const TASK_PATH = 'write-back-e2e-task.md'
 
 function dispatchAction(page: Page, action: EngineAction): Promise<unknown> {
-  // pluginId's type is the literal 'obsidian-pomodoro-plugin' (matches PLUGIN_ID's
+  // pluginId's type is the literal 'routine-flow' (matches PLUGIN_ID's
   // const-inferred type), not a widened `string` -- required so the indexed
   // access below narrows via the PluginsRegistry augmentation in
   // obsidian-internal.d.ts instead of falling back to `unknown`.

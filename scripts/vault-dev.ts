@@ -5,7 +5,7 @@ import { Command } from 'commander'
 import { rebuildGeneratedVault, resolveVaultSeed } from '../e2e/vault'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-const VAULT_PATH = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
+const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
 const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
 
 async function main(): Promise<void> {

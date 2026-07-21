@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
 
-const PLUGIN_ID = 'obsidian-pomodoro-plugin'
+const PLUGIN_ID = 'routine-flow'
 
 test.describe('routine replace confirmation modal', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {

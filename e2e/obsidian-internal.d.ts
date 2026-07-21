@@ -22,7 +22,7 @@ declare module 'obsidian' {
     // engine actions directly); every other plugin id still falls back to
     // `unknown` via the Record intersection.
     readonly plugins: Record<string, unknown> & {
-      'obsidian-pomodoro-plugin'?: PomodoroPlugin
+      'routine-flow'?: PomodoroPlugin
     }
   }
 

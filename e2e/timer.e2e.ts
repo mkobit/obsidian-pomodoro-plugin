@@ -3,7 +3,7 @@ import { evaluateObsidian } from './helpers/evaluate'
 import { generateVault, resolveVaultSeed } from './vault'
 import type { NoteDefinition } from './vault'
 
-const PLUGIN_ID = 'obsidian-pomodoro-plugin'
+const PLUGIN_ID = 'routine-flow'
 
 /** Mirrors createBaseQuerySource's priority read (src/timer/base-query-task-source.ts) -- missing/non-numeric priority sorts as 0. */
 function pomodoroPriorityOf(note: NoteDefinition): number {

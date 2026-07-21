@@ -1,4 +1,4 @@
-# Bases Pomodoro
+# Routine Flow
 
 A customizable Pomodoro timer for Obsidian, built as a native [Bases](https://help.obsidian.md/bases) view.
 The underlying model is a generic phase graph, not a hardcoded 25/5 cycle — a "routine" note can describe any sequence of timed or rep-based phases (a workout, a standup, a study block), so the timer isn't limited to classic Pomodoro.
@@ -21,8 +21,8 @@ This plugin isn't yet listed in Obsidian's community plugin directory.
 Until then, install manually or via [BRAT](https://github.com/TfTHacker/obsidian42-brat):
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](../../releases).
-2. Copy them into `<your-vault>/.obsidian/plugins/obsidian-pomodoro-plugin/`.
-3. Reload Obsidian and enable "Bases Pomodoro" under Settings → Community plugins.
+2. Copy them into `<your-vault>/.obsidian/plugins/routine-flow/`.
+3. Reload Obsidian and enable "Routine Flow" under Settings → Community plugins.
 
 ## Usage
 

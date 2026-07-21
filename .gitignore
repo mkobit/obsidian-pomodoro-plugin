@@ -31,15 +31,15 @@ test-results/
 .obsidian-bin/
 e2e/test-vault/
 # Plugin install artifacts inside the example vault — populated at runtime by vault:install
-obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/
+routine-flow-example-vault/.obsidian/plugins/
 # Generated per-routine vault content — written by e2e/vault/generator.ts (flow-94c),
 # via e2e/global-setup.ts before e2e runs, or `bun scripts/vault-dev.ts --generated`
-obsidian-pomodoro-plugin-example-vault/pomodoro/
-obsidian-pomodoro-plugin-example-vault/standup/
-obsidian-pomodoro-plugin-example-vault/workout/
-obsidian-pomodoro-plugin-example-vault/spaced-repetition/
-obsidian-pomodoro-plugin-example-vault/stretch-break/
-obsidian-pomodoro-plugin-example-vault/habit-tracking/
+routine-flow-example-vault/pomodoro/
+routine-flow-example-vault/standup/
+routine-flow-example-vault/workout/
+routine-flow-example-vault/spaced-repetition/
+routine-flow-example-vault/stretch-break/
+routine-flow-example-vault/habit-tracking/
 
 # Claude Code local-only settings
 .claude/settings.local.json

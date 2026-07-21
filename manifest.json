@@ -1,6 +1,6 @@
 {
-  "id": "obsidian-pomodoro-plugin",
-  "name": "Bases Pomodoro",
+  "id": "routine-flow",
+  "name": "Routine Flow",
   "version": "0.0.1",
   "minAppVersion": "1.10.0",
   "description": "Customizable Pomodoro timer with Obsidian Bases support.",

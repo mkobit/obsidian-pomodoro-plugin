@@ -10,16 +10,7 @@ import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
 import { resolveActiveFilePath } from '../timer/queue-advance'
 import { createBaseQuerySource } from '../timer/base-query-task-source'
-import type { BaseQueryEntry } from '../timer/base-query-task-source'
-
-/**
- * getViewOptions' declared `default: 'note.type'` for focusProperty/breakProperty is only used
- * by Obsidian's settings UI to pre-fill the field — config.get()/getAsPropertyId() return
- * null/undefined until a user explicitly sets it in the .base file, with no fallback to that
- * declared default applied automatically. Without this, an unconfigured view's propId resolution
- * silently fails and the queue filter falls through to "show every vault note" (found via e2e).
- */
-const DEFAULT_QUEUE_PROPERTY_ID: BasesPropertyId = 'note.type'
+import { filterQueueCandidates } from '../timer/queue-filter'
 
 export class PomodoroTimerView extends BasesView {
   readonly type = 'pomodoro-timer'
@@ -196,24 +187,13 @@ export class PomodoroTimerView extends BasesView {
   }
 
   private buildTaskSource(phase: Phase, entries: readonly BasesEntry[]) {
-    const isFocus = phase.kind === FOCUS_PHASE_KIND
-    const propId = (isFocus ? this.config?.getAsPropertyId('focusProperty') : this.config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
-    const rawTargetVal = isFocus ? this.config?.get('focusValue') : this.config?.get('breakValue')
-    const targetValFallback = isFocus ? 'work' : 'break'
-    const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
-
-    const filteredEntries = entries.filter((entry) => {
-      const valObj = entry.getValue(propId)
-      const valStr = valObj ? valObj.toString() : ''
-      return valStr.toLowerCase() === targetVal.toLowerCase()
-    })
-
-    const baseQueryEntries: BaseQueryEntry[] = filteredEntries.map(entry => ({
+    const candidates = entries.map(entry => ({
       path: entry.file.path,
       basename: entry.file.basename,
       frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
+      getValue: (propId: BasesPropertyId) => entry.getValue(propId),
     }))
-    return createBaseQuerySource(baseQueryEntries)
+    return createBaseQuerySource(filterQueueCandidates(phase, this.config, candidates))
   }
 
   private getConfiguredRoutineFilePath(): string | null {

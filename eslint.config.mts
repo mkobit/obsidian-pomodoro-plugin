@@ -92,7 +92,6 @@ export default tseslint.config(
   {
     ignores: [
       // Plugin install artifacts inside the test vault — populated at runtime by `bun run vault:install`
-      // eslint-disable-next-line obsidianmd/hardcoded-config-path
       'obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/**',
       // Beads issue tracker — generated config and data files
       '.beads/**',
@@ -341,6 +340,7 @@ export default tseslint.config(
       'functional/no-let': 'off', // Allow let in Playwright e2e tests
       '@typescript-eslint/no-non-null-assertion': 'off', // Allow non-null assertions in tests
       '@typescript-eslint/no-implied-eval': 'off', // evaluateObsidian uses new Function() to serialize/deserialize test fns
+      'obsidianmd/rule-custom-message': 'off', // covers no-new-func for the same new Function() usage above
       'obsidianmd/prefer-window-timers': 'off', // Node.js process code, not Obsidian renderer code -- `window` doesn't exist here
     },
   },
@@ -418,6 +418,17 @@ export default tseslint.config(
       'functional/type-declaration-immutability': 'off',
       '@typescript-eslint/consistent-type-assertions': 'off',
       'no-undef': 'off',
+      // Tooling config, not shipped plugin code: obsidianmd's type-checked rules
+      // walk ESLint's own loosely-typed config/rule APIs (Rule.RuleContext, ESTree
+      // nodes), which are inherently `any`-shaped -- and hardcoded-config-path
+      // fires on the vault-artifact ignore glob below, which is a real path, not a
+      // plugin-runtime reference.
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      'obsidianmd/hardcoded-config-path': 'off',
     },
   },
   {

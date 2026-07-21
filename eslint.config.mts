@@ -347,7 +347,7 @@ export default tseslint.config(
 
   // Scripts
   {
-    files: ['scripts/**/*.ts', 'scripts/**/*.cjs', 'esbuild.config.mjs', 'version-bump.mjs'],
+    files: ['scripts/**/*.ts', 'scripts/**/*.cjs', 'esbuild.config.mjs', 'version-bump.mjs', '.claude/hooks/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,

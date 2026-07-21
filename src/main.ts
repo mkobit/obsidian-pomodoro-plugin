@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian'
+import { Notice, Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
 import { EngineStore } from './timer/store'
 import type { HookEventApplication } from './timer/store'
@@ -18,11 +18,13 @@ import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
   for (const application of applications) {
     if (!application.result.success) {
-      // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
-      console.error('Pomodoro write-back failed', application.result)
+      const { mutation, cause } = application.result
+      new Notice(`Pomodoro: write-back failed (${mutation.kind}) — ${describeCause(cause)}`)
     }
   }
 }
+
+const describeCause = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
 
 export default class PomodoroPlugin extends Plugin {
   public settings: PomodoroSettings = DEFAULT_SETTINGS
@@ -49,8 +51,7 @@ export default class PomodoroPlugin extends Plugin {
     this.store = new EngineStore(POMODORO_PHASE_GRAPH, { hookRegistry, port, predicateRegistry, taskSourceRegistry: this.taskSourceRegistry })
     this.ticker = new TimerTicker((action) => {
       void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
-        // eslint-disable-next-line no-console -- no Notice yet for write-back failures, see design.md decision 6
-        console.error('Pomodoro hook dispatch failed', cause)
+        new Notice(`Pomodoro: hook dispatch failed — ${describeCause(cause)}`)
       })
     })
 

@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-pomodoro-plugin",
+  "name": "routine-flow",
   "version": "0.0.1",
   "description": "Customizable Pomodoro timer with Obsidian Bases support.",
   "main": "main.js",

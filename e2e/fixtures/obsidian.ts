@@ -9,7 +9,7 @@ import { terminateProcess } from './process-lifecycle'
 import obsidianVersion from '../obsidian-version.json' with { type: 'json' }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../')
-const VAULT_PATH = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
+const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
 const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
 
 function findFreePort(): Promise<number> {

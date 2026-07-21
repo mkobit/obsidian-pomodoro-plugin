@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process'
 import { rebuildGeneratedVault, resolveVaultSeed } from './vault'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-const VAULT_PATH = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
+const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
 
 /**
  * e2e/fixtures/obsidian.ts launches Obsidian against whatever main.js already sits at ROOT_DIR --

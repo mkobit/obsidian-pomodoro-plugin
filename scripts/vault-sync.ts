@@ -4,10 +4,10 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-const SRC_VAULT = path.join(ROOT_DIR, 'obsidian-pomodoro-plugin-example-vault')
-const PLUGIN_ID = 'obsidian-pomodoro-plugin'
+const SRC_VAULT = path.join(ROOT_DIR, 'routine-flow-example-vault')
+const PLUGIN_ID = 'routine-flow'
 const PLUGIN_ARTIFACTS = ['main.js', 'manifest.json', 'styles.css'] as const
-const VAULT_BASENAME = 'obsidian-pomodoro-plugin-example-vault'
+const VAULT_BASENAME = 'routine-flow-example-vault'
 
 function run(cmd: string, args: readonly string[], stdio: 'inherit' | 'pipe' = 'inherit'): Promise<{ readonly stdout: string }> {
   return new Promise((resolve, reject) => {
@@ -55,7 +55,7 @@ async function resolveDest(): Promise<string> {
   if (!detected) {
     console.error('Could not auto-detect Windows Documents folder.')
     console.error('Usage: bun run vault:sync [destination]')
-    console.error('  e.g. /mnt/c/Users/<you>/Documents/obsidian-pomodoro-plugin-example-vault')
+    console.error('  e.g. /mnt/c/Users/<you>/Documents/routine-flow-example-vault')
     process.exit(1)
   }
   return detected

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "obsidian-pomodoro-plugin",
+      "name": "routine-flow",
       "dependencies": {
         "obsidian": "1.13.1",
         "remeda": "^2.37.0",

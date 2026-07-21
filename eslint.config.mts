@@ -92,7 +92,7 @@ export default tseslint.config(
   {
     ignores: [
       // Plugin install artifacts inside the test vault — populated at runtime by `bun run vault:install`
-      'obsidian-pomodoro-plugin-example-vault/.obsidian/plugins/**',
+      'routine-flow-example-vault/.obsidian/plugins/**',
       // Beads issue tracker — generated config and data files
       '.beads/**',
     ],

@@ -1,6 +1,6 @@
 {
   "name": "obsidian-pomodoro-plugin",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Customizable Pomodoro timer with Obsidian Bases support.",
   "main": "main.js",
   "type": "module",

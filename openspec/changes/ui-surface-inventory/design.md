@@ -27,6 +27,8 @@ A `claude.ai/design` DesignSync project ("Routine Flow", projectId `f9c07593-433
 
 This scoping pass settled on documenting 12 distinct surfaces/states — the six already tracked, five additional `PomodoroTimerView` rendering states worth calling out individually rather than folding into "the timer view," and one new modal. Each is numbered below with its current state and first-pass design direction. Surfaces are grouped by whether they exist in shipped code today (1-8) or are not-yet-built proposals (9-12).
 
+A companion document, `surface-model.md`, layers four analytical lenses on this same 12-surface inventory — taxonomy (surface type/primitive/lifecycle), relationships (concurrency, mutual exclusion, triggers/lifecycle, sequencing), jobs-to-be-done (why the user is there), and a grounded interactions inventory (every button/field/click target, with keyboard behavior) — using the same #1–#12 numbering and the same shipped-vs-proposed honesty convention. It also resolves this document's first Open Question (surface #9 vs. #1 design pass — see below). Read the two side by side.
+
 ### Surfaces that exist in `src/` today
 
 #### 1. Timer panel + controls + queue — normal/active state
@@ -128,5 +130,5 @@ Not applicable — this change adds a document and files/updates beads; no code 
 
 ## Open Questions
 
-- Should surface #9 (workspace-wide view) and surface #1 (Bases-embedded view) share a single design language pass, or be briefed to Stitch independently given how different their space constraints are (status bar vs. full panel)? Left open for whoever picks up flow-gu1.11.
+- ~~Should surface #9 (workspace-wide view) and surface #1 (Bases-embedded view) share a single design language pass, or be briefed to Stitch independently given how different their space constraints are (status bar vs. full panel)?~~ **Resolved in `surface-model.md` §2.5:** they share the underlying state model (one `EngineStore`, so they agree by construction — no sync problem) and the cross-surface design foundations (flow-gu1.19.2), but warrant separate per-surface briefs because their space budget differs fundamentally, #9 has no per-leaf routine binding (so no inert state #4), and their interaction sets differ. No new bead — owned by flow-gu1.11/flow-gu1.19.4.
 - Does reconciling the existing error-`Notice` copy (surface #11) belong inside flow-gu1.57's scope, or is it a separate small cleanup? Left as a note on flow-gu1.57's future implementer to decide, not resolved here.

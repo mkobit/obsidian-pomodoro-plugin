@@ -28,3 +28,39 @@ Each inventory entry SHALL include a first-pass design direction covering: what 
 #### Scenario: Design direction has no implementation-level detail
 - **WHEN** a reader searches `design.md`'s per-surface design-direction subsections for CSS property names, hex/color values, or pixel measurements
 - **THEN** none are found — direction is expressed only as communication goals, hierarchy, and states
+
+### Requirement: Surface taxonomy
+`surface-model.md` SHALL classify each of the 12 inventoried surfaces by its Obsidian UI primitive and lifecycle (e.g. embedded Bases view, modal dialog, settings panel, workspace chrome, transient notification, onboarding flow), so that the correct Obsidian convention and design-tool briefing strategy can be chosen per surface.
+
+#### Scenario: Every surface has a taxonomy classification
+- **WHEN** a reader looks up any surface #1–#12 in `surface-model.md`'s taxonomy
+- **THEN** it is assigned a category, an Obsidian primitive, a lifecycle, and a shipped-or-proposed marker
+
+### Requirement: Surface relationships
+`surface-model.md` SHALL model how the surfaces relate: which can be visible simultaneously, which are mutually exclusive, what triggers each to appear and disappear, and any sequencing between them. It SHALL resolve, or make explicit progress on, `design.md`'s open question of whether the workspace-wide view (surface #9) shares a design pass with the Bases-embedded view (surface #1).
+
+#### Scenario: Concurrency and triggers are documented
+- **WHEN** a reader asks whether two surfaces can be open at once, or what makes a surface appear
+- **THEN** `surface-model.md` answers it with a grounded trigger/lifecycle and concurrency mapping
+
+#### Scenario: The #9-vs-#1 question is addressed
+- **WHEN** a reader looks for the resolution of `design.md`'s surface #9 / surface #1 open question
+- **THEN** `surface-model.md` states a resolution (shared state model and foundations, separate per-surface briefs) grounded in the single shared `EngineStore`
+
+### Requirement: Per-surface jobs-to-be-done
+`surface-model.md` SHALL state, for each surface, the job the user is trying to accomplish (the outcome they want and what they were doing immediately before), distinct from what the surface displays.
+
+#### Scenario: Each surface has a job statement
+- **WHEN** a reader reads any surface's jobs-to-be-done entry
+- **THEN** it describes the user's intended outcome and prior context, not merely what the surface renders
+
+### Requirement: Grounded interactions inventory
+`surface-model.md` SHALL enumerate, for each surface, every interaction available today (buttons, fields, click targets, keyboard behavior) with `src/` file:line references, and SHALL mark interactions on not-yet-built surfaces (#9–#12) as proposed rather than shipped.
+
+#### Scenario: Shipped interactions are grounded and proposed ones are marked
+- **WHEN** a reader reads the interactions inventory for a shipped surface (#1–#8) versus a proposed one (#9–#12)
+- **THEN** the shipped surface's interactions each cite a `src/` file:line, and the proposed surface's interactions are labelled proposed
+
+#### Scenario: Keyboard behavior is stated
+- **WHEN** a reader checks how the modals handle Escape and Enter
+- **THEN** the inventory states that no surface overrides Obsidian's default keyboard behavior, and that Escape/click-outside resolve the modals as cancelled while Enter-to-submit is not explicitly wired

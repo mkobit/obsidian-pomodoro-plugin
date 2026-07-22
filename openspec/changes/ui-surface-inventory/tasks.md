@@ -15,3 +15,11 @@
 - [x] 3.2 Append a cross-reference note to flow-gu1.20 pointing at this change.
 - [x] 3.3 Append a cross-reference note to flow-gu1.20.1 pointing at this change.
 - [x] 3.4 Close flow-gu1.20.1 once the above are complete.
+
+## 4. Model the surfaces (taxonomy / relationships / jobs / interactions)
+
+- [x] 4.1 Write `surface-model.md` §1: taxonomy classifying all 12 surfaces by Obsidian primitive and lifecycle.
+- [x] 4.2 Write `surface-model.md` §2: relationships — concurrency matrix, mutual exclusion, grounded triggers/lifecycle table, sequencing; resolve `design.md`'s surface #9-vs-#1 open question (§2.5).
+- [x] 4.3 Write `surface-model.md` §3: per-surface jobs-to-be-done.
+- [x] 4.4 Write `surface-model.md` §4: grounded interactions inventory with file:line references and keyboard-behavior note; mark #9–#12 interactions proposed.
+- [x] 4.5 Reference `surface-model.md` from `design.md`; strike-through the now-resolved open question. Re-run `openspec validate ui-surface-inventory --strict`.

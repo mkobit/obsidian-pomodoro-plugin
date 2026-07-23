@@ -1,0 +1,106 @@
+# Design foundations — Routine Flow
+
+## Purpose
+
+`openspec/changes/ui-surface-inventory/design.md` briefs all 12 UI surfaces independently but explicitly leaves the *cross-surface* visual language undefined — a color system for states, a typographic scale, a spacing scale, an iconography set. Without it, briefing each surface to Stitch (or implementing it directly) risks 12 visually inconsistent one-off screens. This document supplies that shared vocabulary, referenced by the same #1–#12 surface numbering `design.md`/`surface-model.md` use.
+
+**Grounding convention:** this document names Obsidian CSS custom properties and Lucide icon names, not resolved hex/px values. Theme-native means those values are only real once resolved against a specific Obsidian theme (light or dark, default or user-installed) — there is no single canonical value to record here. Resolved values must be pulled from a running Obsidian instance (`bun run vault:dev` / `vault:dev:headless`) at the point a mockup is actually generated (flow-gu1.19.6, and each flow-gu1.19.8–13 mockup bead), not guessed or hardcoded in this document.
+
+## Decision: theme-native, with one minimal accent layer
+
+Confirmed with Mike, 2026-07-23.
+
+- **Base chrome** (backgrounds, text, borders, existing interactive elements): maps 1:1 to Obsidian's own CSS custom properties. No plugin-authored hex value anywhere in this category.
+- **One additional accent layer**, reserved only for a gap in Obsidian's own semantic vocabulary. Exactly one gap exists today: distinguishing a **paused** timer from a **running** one — Obsidian has `--text-error`/`--text-success`/`--text-warning`/`--interactive-accent`, but nothing that reads as "in progress but held."
+  - Resolution: use Obsidian's own extended palette variable, `--color-orange` (documented, most built-in and community themes define it), rather than a hand-picked brand hue — this keeps the "accent layer" inside Obsidian's own vocabulary instead of introducing anything genuinely custom. Verify it resolves against the plugin's target Obsidian version (1.13.1 per `package.json`) during flow-gu1.19.6; if undefined, fall back to `--text-warning`.
+  - This is the *only* place a non-Obsidian **color** value is used (the countdown font-size multiplier below is a separate, non-color departure — see Open Questions). If a future surface turns up a second real color gap, extend this section deliberately — don't accumulate more accents by default.
+
+### Why not the alternatives
+
+- **Fully theme-native, zero accent** was close, but "paused vs. running" is a real communication gap: `design.md` surfaces #2 (loading), #3 (error), and #5 (empty-queue) are called out as "reduc[ing] to short strings today and... easy to confuse with each other," and the running/paused distinction has the same shape — an accent-free version would rely entirely on text, repeating the exact problem this epic exists to fix.
+- **Custom brand identity** was rejected: this plugin is embedded inside whatever theme the user has chosen; a distinctive independent palette fights that context and adds a second, plugin-specific color system to maintain indefinitely.
+
+## Color system — semantic state mapping
+
+| Plugin state | Obsidian variable | Used by (surfaces) |
+| :-- | :-- | :-- |
+| Running | `--interactive-accent` / `--text-accent` | #1 |
+| Paused | `--color-orange` (fallback `--text-warning`) | #1 |
+| Stopped / informational (not an error) | `--text-muted` | #1 (idle queue), #4 |
+| Error | `--text-error` / `--background-modifier-error` | #3 |
+| Warning / destructive confirmation | `--text-warning`, Obsidian's warning/destructive button convention | #7 |
+| Success / write confirmed | `--text-success` / `--background-modifier-success` | #6 (if a post-submit confirmation is ever added) |
+| Loading / in progress | `--text-muted` text + Lucide `loader-2` (spin) | #2 |
+| Empty / no items | `--text-muted` text + iconography (see below) | #5 |
+| Default body text | `--text-normal` | all |
+| Faint / tertiary text | `--text-faint` | queue secondary metadata |
+| Borders / dividers | `--background-modifier-border` | modal field grouping (#6, #7), settings groups (#8) |
+| Surface background | `--background-primary` (panel/modal) | all |
+
+Note: #2 (loading), #4 (inert), and #5 (empty) all resolve to `--text-muted` — color alone does not distinguish them from each other. That distinction is carried by the iconography table below (`loader-2` vs. `info` vs. `inbox`/`list-x`) plus copy, not by color. Don't assume the color system alone resolves the confusability `design.md` #2/#3/#5 flags.
+
+## Typography scale
+
+Maps Obsidian's UI font-size variables onto the hierarchy `design.md` already establishes per surface (e.g. #1: "large countdown, smaller phase/status text").
+
+| Role | Obsidian variable | Applies to |
+| :-- | :-- | :-- |
+| Countdown (largest, dominant) | `--font-ui-large`, scaled up — Obsidian's own "large" is tuned for UI chrome, not a hero countdown; likely needs a plugin-defined multiplier (see Open Questions) | #1 header |
+| Phase label / status | `--font-ui-medium` | #1 header secondary line |
+| Body / field text | `--font-ui-small` | modal fields (#6, #7), settings (#8) |
+| Secondary / muted metadata | `--font-ui-smaller` | queue item metadata, descriptions |
+| Weight | `--font-normal` default; `--font-bold` reserved for the countdown and primary CTA labels only | — |
+
+## Spacing scale
+
+Use Obsidian's `--size-4-*` token scale (its 4px-based spacing system) rather than inventing new pixel values.
+
+| Tier | Obsidian variable(s) | Applies to |
+| :-- | :-- | :-- |
+| Tight | `--size-4-1` / `--size-4-2` | control-row gaps, list-item internal padding |
+| Standard | `--size-4-3` / `--size-4-4` | field-to-field spacing in modals, section padding |
+| Loose | `--size-4-5` and above | panel-to-panel spacing, group separation |
+
+## Iconography
+
+Obsidian ships Lucide; use `setIcon()` / the Icon component with these semantic assignments. Verify each name still resolves in the installed Lucide set during implementation — Lucide occasionally renames icons across versions. Three of the names below are known-renamed in current Lucide (kept here as the names to search for first, since which alias Obsidian's bundled version resolves is unverified): `loader-2` → `loader-circle`, `alert-circle` → `circle-alert`, `alert-triangle` → `triangle-alert`.
+
+| Meaning | Icon | Surfaces |
+| :-- | :-- | :-- |
+| Start / running | `play` | #1 |
+| Pause | `pause` | #1 |
+| Reset / stop | `square` or `rotate-ccw` | #1 |
+| Done (manual clear) | `check` | #1 |
+| Loading | `loader-2` (CSS spin) | #2 |
+| Error | `alert-circle` | #3 |
+| Informational / inert | `info` | #4 |
+| Empty / no items | `inbox` or `list-x` | #5 |
+| Destructive confirmation | `alert-triangle` | #7 |
+| Queue / list | `list-todo` | #1 (queue heading, if one is added) |
+
+## Elevation, borders, radius
+
+- Field/section grouping in modals (#6, #7) and settings groups (#8): `--background-modifier-border` for dividers, `--radius-s` / `--radius-m` for any container corners — match Obsidian's own `Modal`/`Setting` chrome rather than inventing a new radius.
+- No custom box-shadow / elevation system — Obsidian's `Modal` already provides this; don't reimplement it.
+
+## User theming and CSS-snippet compatibility
+
+Mike flagged (2026-07-23) that users must be able to apply their own themes, CSS snippets, and imagery against this plugin — not just passively inherit the active theme, but actively restyle it. This constrains implementation, not just color choice:
+
+- Every value in the tables above is a CSS custom property *reference*, never a hardcoded hex/px literal baked into a rule. This is already required by the theme-native decision, and it's also what makes user CSS snippets viable — a snippet can override a `var(--interactive-accent)` reference or a plugin class, but can't cleanly override a hardcoded literal.
+- One stable, documented CSS class namespace, applied consistently as a snippet target — but this is **only true for surface #1 today**. `timer-view.ts` carries the `pomodoro-*` prefix (`pomodoro-timer-view`, `-timer-panel`, `-controls`, `-queue`, etc.), but `WriteBackModal` (#6), `RoutineReplaceModal` (#7), and `PomodoroSettingTab` (#8) currently add **no plugin-scoped class at all** — they render straight onto `contentEl`/`containerEl`, so a user's snippet could only reach them via Obsidian's generic `.modal`/`.setting-item` selectors, which hit every plugin's modals and settings tabs indiscriminately, not just this one. Adding a root-level scoped class to each (e.g. via `modalEl.addClass(...)`/`containerEl.addClass(...)`) is a prerequisite for snippet-targeting those three surfaces, not something that already exists — treat it as part of each surface's implementation pass (flow-gu1.19.5 for #6, flow-gu1.62 for #7, flow-gu1.58 for #8), not a retrofit deferred to flow-q2p.
+- No JS-driven inline `style=` attributes for anything a snippet should be able to target — route all visual state through class toggles.
+- Any hardcoded fallback (e.g. for the rare theme that doesn't define `--color-orange`) must itself be overridable the same way: a plugin-scoped custom property, e.g. `--routine-flow-accent-paused: var(--color-orange, var(--text-warning));`, never an unconditional literal.
+- flow-q2p ("Custom CSS stylesheet support for user theming") is where an explicit override mechanism gets built. This document establishes the discipline — stable classes, var-only values — that makes that bead cheap rather than a retrofit.
+- Imagery: prefer Lucide icons (already theme-aware, inherit `currentColor`) over bespoke raster/SVG brand assets. If surface #12 (onboarding) ever needs illustrative imagery, it must respond to light/dark (SVG with `currentColor`/CSS-var fills, not a fixed bitmap) — deferred to flow-gu1.59's own scoping pass, not decided here.
+
+## Non-goals
+
+- Resolved hex/px values — theme-native means there is no single canonical value; pull real numbers from a running Obsidian instance at generation/implementation time.
+- The flow-gu1.60 `Pomodoro*` → `Routine Flow` class-name rename — this document's class-naming principle (stable, documented, var-only) applies regardless of the literal prefix chosen there.
+- Per-surface layout/hierarchy decisions — `design.md` and `surface-model.md` already own those; this document supplies the shared vocabulary they draw from.
+
+## Open Questions
+
+- Whether `--color-orange` is actually defined for the plugin's target Obsidian version and in commonly-used community themes, or whether the `--text-warning` fallback ends up being the practical default — resolve during flow-gu1.19.6 by checking a running instance, not by assumption here.
+- Countdown font size: `--font-ui-large` may be too close to the phase-label size to read as clearly dominant; may need a plugin-defined multiplier (e.g. `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);`) rather than a fixed literal. Flag for flow-gu1.19.8 (the timer-panel trial mockup) to validate visually before locking in.

@@ -13,6 +13,7 @@ import { createTaskSourceRegistry } from './timer/task-source-registry'
 import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
 import { PomodoroTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
+import { PomodoroStatusBarItem } from './views/status-bar'
 
 /** Surfaces a dispatched hook's failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
@@ -31,6 +32,7 @@ export default class PomodoroPlugin extends Plugin {
   public store!: EngineStore
   public ticker!: TimerTicker
   public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
+  private statusBarItem!: PomodoroStatusBarItem
 
   async onload() {
     await this.loadSettings()
@@ -80,10 +82,14 @@ export default class PomodoroPlugin extends Plugin {
     )
 
     this.addSettingTab(new PomodoroSettingTab(this.app, this))
+
+    this.statusBarItem = new PomodoroStatusBarItem(this)
+    this.statusBarItem.load()
   }
 
   onunload() {
     this.ticker.stop()
+    this.statusBarItem.unload()
   }
 
   async loadSettings() {

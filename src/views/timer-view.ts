@@ -5,6 +5,7 @@ import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
 import { findPhaseById, FOCUS_PHASE_KIND, POMODORO_PHASE_GRAPH } from '../timer/phase-graph'
+import { formatPhaseHeader } from '../timer/format'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
@@ -107,15 +108,7 @@ export class PomodoroTimerView extends BasesView {
 
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'pomodoro-timer-panel' })
-    const headerText = state.remaining === null
-      ? `${phase.label} (${state.status})`
-      : (() => {
-          const totalSeconds = state.remaining.total({ unit: 'seconds' })
-          const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
-          const secs = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
-          return `${phase.label}: ${mins}:${secs} (${state.status})`
-        })()
-    timerPanel.createEl('h2', { text: headerText })
+    timerPanel.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
 
     if (!isViewRoutineActive && state.status !== 'stopped') {
       timerPanel.createEl('p', { text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").`, cls: 'pomodoro-routine-inert' })

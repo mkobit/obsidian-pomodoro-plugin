@@ -52,7 +52,21 @@
       "Bash(bun run test)",
       "Bash(bun run test:coverage)",
       "Bash(bun test)",
-      "Bash(bun test *)"
+      "Bash(bun test *)",
+      "mcp__stitch__list_projects",
+      "mcp__stitch__get_project",
+      "mcp__stitch__create_project",
+      "mcp__stitch__list_screens",
+      "mcp__stitch__get_screen",
+      "mcp__stitch__generate_screen_from_text",
+      "mcp__stitch__generate_variants",
+      "mcp__stitch__edit_screens",
+      "mcp__stitch__list_design_systems",
+      "mcp__stitch__create_design_system",
+      "mcp__stitch__update_design_system",
+      "mcp__stitch__apply_design_system",
+      "mcp__stitch__upload_design_md",
+      "mcp__stitch__create_design_system_from_design_md"
     ],
     "ask": [
       "Bash(git push *)",
@@ -65,7 +79,8 @@
       "Bash(git clean -f*)",
       "Bash(git branch -D*)",
       "Bash(git push --force*)",
-      "Bash(rm -rf*)"
+      "Bash(rm -rf*)",
+      "mcp__stitch__delete_project"
     ]
   }
 }

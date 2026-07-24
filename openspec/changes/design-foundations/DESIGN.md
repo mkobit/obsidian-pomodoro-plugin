@@ -2,18 +2,26 @@
 
 ## Purpose
 
-`openspec/changes/ui-surface-inventory/design.md` briefs all 12 UI surfaces independently but explicitly leaves the *cross-surface* visual language undefined — a color system for states, a typographic scale, a spacing scale, an iconography set. Without it, briefing each surface to Stitch (or implementing it directly) risks 12 visually inconsistent one-off screens. This document supplies that shared vocabulary, referenced by the same #1–#12 surface numbering `design.md`/`surface-model.md` use.
+`openspec/changes/ui-surface-inventory/design.md` briefs all 12 UI surfaces independently but explicitly leaves the *cross-surface* visual language undefined — a color system for states, a typographic scale, a spacing scale, an iconography set.
+Without it, briefing each surface to Stitch (or implementing it directly) risks 12 visually inconsistent one-off screens.
+This document supplies that shared vocabulary, referenced by the same #1–#12 surface numbering `design.md`/`surface-model.md` use.
 
-**Grounding convention:** this document names Obsidian CSS custom properties and Lucide icon names, not resolved hex/px values. Theme-native means those values are only real once resolved against a specific Obsidian theme (light or dark, default or user-installed) — there is no single canonical value to record here. Resolved values must be pulled from a running Obsidian instance (`bun run vault:dev` / `vault:dev:headless`) at the point a mockup is actually generated (flow-gu1.19.6, and each flow-gu1.19.8–13 mockup bead), not guessed or hardcoded in this document.
+**Grounding convention:** this document names Obsidian CSS custom properties and Lucide icon names, not resolved hex/px values.
+Theme-native means those values are only real once resolved against a specific Obsidian theme (light or dark, default or user-installed) — there is no single canonical value to record here.
+Resolved values must be pulled from a running Obsidian instance (`bun run vault:dev` / `vault:dev:headless`) at the point a mockup is actually generated (flow-gu1.19.6, and each flow-gu1.19.8–13 mockup bead), not guessed or hardcoded in this document.
 
 ## Decision: theme-native, with one minimal accent layer
 
 Confirmed with Mike, 2026-07-23.
 
-- **Base chrome** (backgrounds, text, borders, existing interactive elements): maps 1:1 to Obsidian's own CSS custom properties. No plugin-authored hex value anywhere in this category.
-- **One additional accent layer**, reserved only for a gap in Obsidian's own semantic vocabulary. Exactly one gap exists today: distinguishing a **paused** timer from a **running** one — Obsidian has `--text-error`/`--text-success`/`--text-warning`/`--interactive-accent`, but nothing that reads as "in progress but held."
-  - Resolution: use Obsidian's own extended palette variable, `--color-orange` (documented, most built-in and community themes define it), rather than a hand-picked brand hue — this keeps the "accent layer" inside Obsidian's own vocabulary instead of introducing anything genuinely custom. Verify it resolves against the plugin's target Obsidian version (1.13.1 per `package.json`) during flow-gu1.19.6; if undefined, fall back to `--text-warning`.
-  - This is the *only* place a non-Obsidian **color** value is used (the countdown font-size multiplier below is a separate, non-color departure — see Open Questions). If a future surface turns up a second real color gap, extend this section deliberately — don't accumulate more accents by default.
+- **Base chrome** (backgrounds, text, borders, existing interactive elements): maps 1:1 to Obsidian's own CSS custom properties.
+  No plugin-authored hex value anywhere in this category.
+- **One additional accent layer**, reserved only for a gap in Obsidian's own semantic vocabulary.
+  Exactly one gap exists today: distinguishing a **paused** timer from a **running** one — Obsidian has `--text-error`/`--text-success`/`--text-warning`/`--interactive-accent`, but nothing that reads as "in progress but held."
+  - Resolution: use Obsidian's own extended palette variable, `--color-orange` (documented, most built-in and community themes define it), rather than a hand-picked brand hue — this keeps the "accent layer" inside Obsidian's own vocabulary instead of introducing anything genuinely custom.
+    Verify it resolves against the plugin's target Obsidian version (1.13.1 per `package.json`) during flow-gu1.19.6; if undefined, fall back to `--text-warning`.
+  - This is the *only* place a non-Obsidian **color** value is used (the countdown font-size multiplier below is a separate, non-color departure — see Open Questions).
+    If a future surface turns up a second real color gap, extend this section deliberately — don't accumulate more accents by default.
 
 ### Why not the alternatives
 
@@ -37,7 +45,9 @@ Confirmed with Mike, 2026-07-23.
 | Borders / dividers | `--background-modifier-border` | modal field grouping (#6, #7), settings groups (#8) |
 | Surface background | `--background-primary` (panel/modal) | all |
 
-Note: #2 (loading), #4 (inert), and #5 (empty) all resolve to `--text-muted` — color alone does not distinguish them from each other. That distinction is carried by the iconography table below (`loader-2` vs. `info` vs. `inbox`/`list-x`) plus copy, not by color. Don't assume the color system alone resolves the confusability `design.md` #2/#3/#5 flags.
+Note: #2 (loading), #4 (inert), and #5 (empty) all resolve to `--text-muted` — color alone does not distinguish them from each other.
+That distinction is carried by the iconography table below (`loader-2` vs. `info` vs. `inbox`/`list-x`) plus copy, not by color.
+Don't assume the color system alone resolves the confusability `design.md` #2/#3/#5 flags.
 
 ## Typography scale
 
@@ -63,7 +73,9 @@ Use Obsidian's `--size-4-*` token scale (its 4px-based spacing system) rather th
 
 ## Iconography
 
-Obsidian ships Lucide; use `setIcon()` / the Icon component with these semantic assignments. Verify each name still resolves in the installed Lucide set during implementation — Lucide occasionally renames icons across versions. Three of the names below are known-renamed in current Lucide (kept here as the names to search for first, since which alias Obsidian's bundled version resolves is unverified): `loader-2` → `loader-circle`, `alert-circle` → `circle-alert`, `alert-triangle` → `triangle-alert`.
+Obsidian ships Lucide; use `setIcon()` / the Icon component with these semantic assignments.
+Verify each name still resolves in the installed Lucide set during implementation — Lucide occasionally renames icons across versions.
+Three of the names below are known-renamed in current Lucide (kept here as the names to search for first, since which alias Obsidian's bundled version resolves is unverified): `loader-2` → `loader-circle`, `alert-circle` → `circle-alert`, `alert-triangle` → `triangle-alert`.
 
 | Meaning | Icon | Surfaces |
 | :-- | :-- | :-- |
@@ -85,14 +97,23 @@ Obsidian ships Lucide; use `setIcon()` / the Icon component with these semantic 
 
 ## User theming and CSS-snippet compatibility
 
-Mike flagged (2026-07-23) that users must be able to apply their own themes, CSS snippets, and imagery against this plugin — not just passively inherit the active theme, but actively restyle it. This constrains implementation, not just color choice:
+Mike flagged (2026-07-23) that users must be able to apply their own themes, CSS snippets, and imagery against this plugin — not just passively inherit the active theme, but actively restyle it.
+This constrains implementation, not just color choice:
 
-- Every value in the tables above is a CSS custom property *reference*, never a hardcoded hex/px literal baked into a rule. This is already required by the theme-native decision, and it's also what makes user CSS snippets viable — a snippet can override a `var(--interactive-accent)` reference or a plugin class, but can't cleanly override a hardcoded literal.
-- One stable, documented CSS class namespace, applied consistently as a snippet target — but this is **only true for surface #1 today**. `timer-view.ts` carries the `pomodoro-*` prefix (`pomodoro-timer-view`, `-timer-panel`, `-controls`, `-queue`, etc.), but `WriteBackModal` (#6), `RoutineReplaceModal` (#7), and `PomodoroSettingTab` (#8) currently add **no plugin-scoped class at all** — they render straight onto `contentEl`/`containerEl`, so a user's snippet could only reach them via Obsidian's generic `.modal`/`.setting-item` selectors, which hit every plugin's modals and settings tabs indiscriminately, not just this one. Adding a root-level scoped class to each (e.g. via `modalEl.addClass(...)`/`containerEl.addClass(...)`) is a prerequisite for snippet-targeting those three surfaces, not something that already exists — treat it as part of each surface's implementation pass (flow-gu1.19.5 for #6, flow-gu1.62 for #7, flow-gu1.58 for #8), not a retrofit deferred to flow-q2p.
+- Every value in the tables above is a CSS custom property *reference*, never a hardcoded hex/px literal baked into a rule.
+  This is already required by the theme-native decision, and it's also what makes user CSS snippets viable — a snippet can override a `var(--interactive-accent)` reference or a plugin class, but can't cleanly override a hardcoded literal.
+- One stable, documented CSS class namespace, applied consistently as a snippet target — but this is **only true for surface #1 today**.
+  `timer-view.ts` carries the `pomodoro-*` prefix (`pomodoro-timer-view`, `-timer-panel`, `-controls`, `-queue`, etc.), but `WriteBackModal` (#6), `RoutineReplaceModal` (#7), and `PomodoroSettingTab` (#8) currently add **no plugin-scoped class at all** — they render straight onto `contentEl`/`containerEl`, so a user's snippet could only reach them via Obsidian's generic `.modal`/`.setting-item` selectors, which hit every plugin's modals and settings tabs indiscriminately, not just this one.
+  Adding a root-level scoped class to each (e.g. via `modalEl.addClass(...)`/`containerEl.addClass(...)`) is a prerequisite for snippet-targeting those three surfaces, not something that already exists — treat it as part of each surface's implementation pass (flow-gu1.19.5 for #6, flow-gu1.62 for #7, flow-gu1.58 for #8), not a retrofit deferred to flow-q2p.
 - No JS-driven inline `style=` attributes for anything a snippet should be able to target — route all visual state through class toggles.
 - Any hardcoded fallback (e.g. for the rare theme that doesn't define `--color-orange`) must itself be overridable the same way: a plugin-scoped custom property, e.g. `--routine-flow-accent-paused: var(--color-orange, var(--text-warning));`, never an unconditional literal.
-- flow-q2p ("Custom CSS stylesheet support for user theming") is where an explicit override mechanism gets built. This document establishes the discipline — stable classes, var-only values — that makes that bead cheap rather than a retrofit.
-- Imagery and any visual asset (Mike, 2026-07-23): no raster/bitmap assets (PNG/JPG/WebP) anywhere in the plugin, ever — every visual element must be HTML/CSS or inline SVG, drawable and stylable rather than a shipped image file. This applies beyond icons: if a future surface introduces a graphical timer/progress representation (e.g. a circular countdown ring), it must be built as SVG (`stroke`/`stroke-dasharray` on a `<circle>`) or pure CSS (`conic-gradient`, `clip-path`), never a pre-rendered image sequence. Three reasons this is a hard requirement, not a preference: (1) scaling — vector/CSS scales cleanly at any zoom or display density, a raster asset doesn't; (2) asset footprint — zero bundled image files to ship or version, consistent with the plugin's minimal-surface-area conventions; (3) theming — an SVG using `currentColor`/`fill: var(--interactive-accent)` or a CSS-drawn shape re-themes automatically with the rest of this document's var-based system (including per-task/per-context recoloring, e.g. a future capability to tint the timer differently by task type), where a bitmap would need a whole new asset per palette. Lucide icons already satisfy this (inherit `currentColor`); the constraint mainly rules out generating/vendoring any illustrative or decorative image, including anything Stitch mockups might invent — if a mockup shows a raster-style graphic (a rendered ring, a photo-realistic illustration), treat it as a Stitch generation artifact to redesign as SVG/CSS during implementation, not something to source as an asset. Applies now, not deferred like the rest of this bullet's onboarding-specific case (surface #12 still needs its own scoping pass for *whether* it uses imagery at all — this constrains *how*, whenever it does).
+- flow-q2p ("Custom CSS stylesheet support for user theming") is where an explicit override mechanism gets built.
+  This document establishes the discipline — stable classes, var-only values — that makes that bead cheap rather than a retrofit.
+- Imagery and any visual asset (Mike, 2026-07-23): no raster/bitmap assets (PNG/JPG/WebP) anywhere in the plugin, ever — every visual element must be HTML/CSS or inline SVG, drawable and stylable rather than a shipped image file.
+  This applies beyond icons: if a future surface introduces a graphical timer/progress representation (e.g. a circular countdown ring), it must be built as SVG (`stroke`/`stroke-dasharray` on a `<circle>`) or pure CSS (`conic-gradient`, `clip-path`), never a pre-rendered image sequence.
+  Three reasons this is a hard requirement, not a preference: (1) scaling — vector/CSS scales cleanly at any zoom or display density, a raster asset doesn't; (2) asset footprint — zero bundled image files to ship or version, consistent with the plugin's minimal-surface-area conventions; (3) theming — an SVG using `currentColor`/`fill: var(--interactive-accent)` or a CSS-drawn shape re-themes automatically with the rest of this document's var-based system (including per-task/per-context recoloring, e.g. a future capability to tint the timer differently by task type), where a bitmap would need a whole new asset per palette.
+  Lucide icons already satisfy this (inherit `currentColor`); the constraint mainly rules out generating/vendoring any illustrative or decorative image, including anything Stitch mockups might invent — if a mockup shows a raster-style graphic (a rendered ring, a photo-realistic illustration), treat it as a Stitch generation artifact to redesign as SVG/CSS during implementation, not something to source as an asset.
+  Applies now, not deferred like the rest of this bullet's onboarding-specific case (surface #12 still needs its own scoping pass for *whether* it uses imagery at all — this constrains *how*, whenever it does).
 
 ## Non-goals
 
@@ -103,4 +124,5 @@ Mike flagged (2026-07-23) that users must be able to apply their own themes, CSS
 ## Open Questions
 
 - Whether `--color-orange` is actually defined for the plugin's target Obsidian version and in commonly-used community themes, or whether the `--text-warning` fallback ends up being the practical default — resolve during flow-gu1.19.6 by checking a running instance, not by assumption here.
-- Countdown font size: `--font-ui-large` may be too close to the phase-label size to read as clearly dominant; may need a plugin-defined multiplier (e.g. `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);`) rather than a fixed literal. Flag for flow-gu1.19.8 (the timer-panel trial mockup) to validate visually before locking in.
+- Countdown font size: `--font-ui-large` may be too close to the phase-label size to read as clearly dominant; may need a plugin-defined multiplier (e.g. `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);`) rather than a fixed literal.
+  Flag for flow-gu1.19.8 (the timer-panel trial mockup) to validate visually before locking in.
